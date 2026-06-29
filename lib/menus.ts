@@ -15,6 +15,7 @@ export type Menu = {
   date: string;      // "2026-06-29"
   message: number;   // מספר ההודעה באותו יום (1, 2, 3...)
   title?: string;    // כותרת אופציונלית
+  intro?: string;    // טקסט מבוא שמופיע מתחת לכותרת בעמוד
   recipes: Recipe[];
 };
 
