@@ -1,0 +1,47 @@
+// כתיבת קובץ למאגר GitHub דרך ה-API (משמש את לוח הניהול לפרסום תפריט).
+const API = 'https://api.github.com';
+
+function repo(): string {
+  return process.env.GITHUB_REPO || 'sfiras/yummio';
+}
+
+function authHeaders(token: string) {
+  return {
+    Authorization: `Bearer ${token}`,
+    Accept: 'application/vnd.github+json',
+    'X-GitHub-Api-Version': '2022-11-28',
+    'User-Agent': 'yummio-admin',
+  };
+}
+
+/** יוצר/מעדכן קובץ ב-data/menus דרך GitHub Contents API, ומפעיל פריסה אוטומטית ב-Vercel */
+export async function putFile(path: string, content: string, message: string) {
+  const token = process.env.GITHUB_TOKEN;
+  if (!token) throw new Error('missing GITHUB_TOKEN');
+
+  const url = `${API}/repos/${repo()}/contents/${path}`;
+
+  // אם הקובץ קיים — צריך את ה-sha שלו כדי לעדכן
+  let sha: string | undefined;
+  const head = await fetch(`${url}?ref=main`, { headers: authHeaders(token), cache: 'no-store' });
+  if (head.ok) {
+    const j = await head.json();
+    sha = j.sha;
+  }
+
+  const res = await fetch(url, {
+    method: 'PUT',
+    headers: { ...authHeaders(token), 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      message,
+      content: Buffer.from(content, 'utf-8').toString('base64'),
+      sha,
+      branch: 'main',
+    }),
+  });
+
+  if (!res.ok) {
+    throw new Error(`GitHub publish failed: ${res.status} ${await res.text()}`);
+  }
+  return res.json();
+}
