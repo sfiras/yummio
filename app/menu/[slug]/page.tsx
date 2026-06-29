@@ -46,7 +46,7 @@ export default function MenuPage({ params }: { params: { slug: string } }) {
             {menu.title ? <>{menu.title} </> : <>המתכונים </>}
             <span>של היום</span>
           </h1>
-          <p>אוסף חדש ומפנק — פשוט, מהיר, ובדיוק מה שמתחשק. בחרו, לחצו, ותתחילו לבשל.</p>
+          <p>{menu.intro?.trim() || 'אוסף חדש ומפנק — פשוט, מהיר, ובדיוק מה שמתחשק. בחרו, לחצו, ותתחילו לבשל.'}</p>
           <div className="meta">
             <span><b>{menu.recipes.length}</b> מתכונים</span>
             <span>⏱️ <b>קלים להכנה</b></span>
