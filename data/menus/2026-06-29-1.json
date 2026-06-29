@@ -1,0 +1,13 @@
+{
+  "date": "2026-06-29",
+  "message": 1,
+  "title": "תפריט הבוקר",
+  "recipes": [
+    { "image": "https://picsum.photos/seed/shakshuka/600/400", "title": "שקשוקה פיקנטית", "desc": "ביצים רכות ברוטב עגבניות מתובל — מוכן ב-15 דקות במחבת אחת.", "url": "https://yummio.example/shakshuka", "time": "15 דק׳", "level": "קל" },
+    { "image": "https://picsum.photos/seed/pancakes/600/400", "title": "פנקייק אוורירי", "desc": "תפוח, גבוה ורך — עם נגיעת וניל וטיפה דבש מלמעלה.", "url": "https://yummio.example/pancakes", "time": "20 דק׳", "level": "קל" },
+    { "image": "https://picsum.photos/seed/omelet/600/400", "title": "חביתת ירק ים-תיכונית", "desc": "עגבנייה, בצל ופטרוזיליה — פתיחה מושלמת ליום.", "url": "https://yummio.example/omelet", "time": "10 דק׳", "level": "קל" },
+    { "image": "https://picsum.photos/seed/granola/600/400", "title": "גרנולה ביתית קריספית", "desc": "שיבולת שועל, אגוזים ודבש — קלייה אחת לכל השבוע.", "url": "https://yummio.example/granola", "time": "25 דק׳", "level": "קל" },
+    { "image": "https://picsum.photos/seed/toast/600/400", "title": "טוסט אבוקדו וביצה", "desc": "פריך, ירוק ומשביע — ארוחת בוקר של קפה משובח בבית.", "url": "https://yummio.example/avocado-toast", "time": "8 דק׳", "level": "קל" },
+    { "image": "https://picsum.photos/seed/smoothie/600/400", "title": "סמודי פירות יער", "desc": "סמיך, קר ומלא אנרגיה — דקתיים והכל מוכן.", "url": "https://yummio.example/smoothie", "time": "5 דק׳", "level": "קל" }
+  ]
+}

@@ -1,0 +1,14 @@
+{
+  "date": "2026-06-29",
+  "message": 2,
+  "title": "תפריט הערב",
+  "recipes": [
+    { "image": "https://picsum.photos/seed/pasta/600/400", "title": "פסטה ברוטב שמנת ושום", "desc": "קרמית, עשירה וממכרת. הילדים מבקשים תוספת בכל פעם.", "url": "https://yummio.example/pasta", "time": "20 דק׳", "level": "קל" },
+    { "image": "https://picsum.photos/seed/chicken/600/400", "title": "חזה עוף בדבש וחרדל", "desc": "עסיסי ומבריק, עם ציפוי מתוק-חריף שכולם אוהבים.", "url": "https://yummio.example/chicken", "time": "30 דק׳", "level": "קל" },
+    { "image": "https://picsum.photos/seed/soup/600/400", "title": "מרק עדשים מנחם", "desc": "סמיך, חם ומלא טעם — קערה אחת וכבר חם לכם בלב.", "url": "https://yummio.example/soup", "time": "35 דק׳", "level": "קל" },
+    { "image": "https://picsum.photos/seed/rice/600/400", "title": "אורז צהוב עם שקדים", "desc": "תוספת חגיגית ומבושמת — כורכום, צימוקים ושקדים קלויים.", "url": "https://yummio.example/yellow-rice", "time": "25 דק׳", "level": "קל" },
+    { "image": "https://picsum.photos/seed/salad/600/400", "title": "סלט קינואה ים-תיכוני", "desc": "קליל, מרענן ומשביע. מושלם לצד כל מנה עיקרית.", "url": "https://yummio.example/salad", "time": "12 דק׳", "level": "קל" },
+    { "image": "https://picsum.photos/seed/burger/600/400", "title": "בורגר ביתי עסיסי", "desc": "הקציצה המושלמת + הרוטב הסודי. שדרוג לערב משפחתי.", "url": "https://yummio.example/burger", "time": "25 דק׳", "level": "בינוני" },
+    { "image": "https://picsum.photos/seed/cookies/600/400", "title": "עוגיות שוקולד צ׳יפס", "desc": "רכות מבפנים, פריכות בקצוות — הסוד בחמאה החומה.", "url": "https://yummio.example/cookies", "time": "25 דק׳", "level": "בינוני" }
+  ]
+}

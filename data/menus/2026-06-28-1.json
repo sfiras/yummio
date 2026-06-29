@@ -1,0 +1,12 @@
+{
+  "date": "2026-06-28",
+  "message": 1,
+  "title": "תפריט אתמול",
+  "recipes": [
+    { "image": "https://picsum.photos/seed/cake/600/400", "title": "עוגת תפוזים בחושה", "desc": "רכה, אוורירית וריחנית. בלי מיקסר, בקערה אחת.", "url": "https://yummio.example/orange-cake", "time": "45 דק׳", "level": "בינוני" },
+    { "image": "https://picsum.photos/seed/pizza/600/400", "title": "פיצה ביתית פריכה", "desc": "בצק נימוח, רוטב עשיר וגבינה נמסה — ערב פיצה מנצח.", "url": "https://yummio.example/pizza", "time": "40 דק׳", "level": "בינוני" },
+    { "image": "https://picsum.photos/seed/fish/600/400", "title": "דג בתנור עם לימון", "desc": "עדין, בריא ומהיר — שמן זית, שום ולימון. זהו.", "url": "https://yummio.example/baked-fish", "time": "22 דק׳", "level": "קל" },
+    { "image": "https://picsum.photos/seed/hummus/600/400", "title": "חומוס ביתי קטיפתי", "desc": "חלק כמו במסעדה — הסוד בבישול ארוך ובטחינה טובה.", "url": "https://yummio.example/hummus", "time": "30 דק׳", "level": "קל" },
+    { "image": "https://picsum.photos/seed/brownie/600/400", "title": "בראוניז שוקולד נמס", "desc": "לחים, עשירים ומתפרקים בפה — הקינוח שכולם רוצים.", "url": "https://yummio.example/brownie", "time": "35 דק׳", "level": "קל" }
+  ]
+}
