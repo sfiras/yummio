@@ -4,16 +4,19 @@ import SaveButton from './SaveButton';
 export default function RecipeCard({
   recipe,
   number,
+  menuSlug,
   priority = false,
 }: {
   recipe: Recipe;
   number: number;     // מספר המתכון (1, 2, 3...)
+  menuSlug?: string;  // עבור מעקב קליקים
   priority?: boolean; // true למתכון הראשון (משפר LCP)
 }) {
+  // קישור דרך /go לספירת קליק (מקור: page = מתוך העמוד)
+  const href = menuSlug ? `/go/${menuSlug}/${number - 1}/page` : recipe.url;
   return (
     <article className="card">
-      <a className="thumb" href={recipe.url} target="_blank" rel="noopener">
-        {/* <img> רגיל מקבל כל כתובת תמונה (כולל og:image מ-yummio) ללא הגדרת דומיין */}
+      <a className="thumb" href={href} target="_blank" rel="noopener">
         <img
           src={recipe.image}
           alt={recipe.title}
@@ -31,7 +34,7 @@ export default function RecipeCard({
         <p className="desc">{recipe.desc}</p>
         <div className="foot">
           <span className="stat">📊 {recipe.level}</span>
-          <a className="btn-go" href={recipe.url} target="_blank" rel="noopener">למתכון ←</a>
+          <a className="btn-go" href={href} target="_blank" rel="noopener">למתכון ←</a>
         </div>
       </div>
     </article>
