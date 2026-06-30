@@ -13,14 +13,14 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
   }
 
-  let body: { date?: string; message?: number | string; title?: string; intro?: string; recipes?: RecipeIn[] };
+  let body: { date?: string; message?: number | string; title?: string; intro?: string; image?: string; recipes?: RecipeIn[] };
   try {
     body = await req.json();
   } catch {
     return NextResponse.json({ error: 'bad json' }, { status: 400 });
   }
 
-  const { date, message, title, intro, recipes } = body;
+  const { date, message, title, intro, image, recipes } = body;
   if (!date || !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
     return NextResponse.json({ error: 'תאריך לא תקין (YYYY-MM-DD)' }, { status: 400 });
   }
@@ -47,7 +47,7 @@ export async function POST(req: Request) {
   const slug = `${date}-${msgNum}`;
   const json =
     JSON.stringify(
-      { date, message: msgNum, title: (title || '').trim(), intro: (intro || '').trim(), recipes: clean },
+      { date, message: msgNum, title: (title || '').trim(), intro: (intro || '').trim(), image: (image || '').trim(), recipes: clean },
       null,
       2
     ) + '\n';
