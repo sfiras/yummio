@@ -59,6 +59,8 @@ export default function AdminPage() {
   const [waNotes, setWaNotes] = useState(WA_DEFAULTS.notes);
   const [waGroup, setWaGroup] = useState(WA_DEFAULTS.group);
   const [waClosing, setWaClosing] = useState(WA_DEFAULTS.closing);
+  const [tracked, setTracked] = useState(true);
+  const [codes, setCodes] = useState<string[]>([]);
 
   const [stats, setStats] = useState<StatMenu[] | null>(null);
   const [statsBusy, setStatsBusy] = useState(false);
@@ -135,6 +137,7 @@ export default function AdminPage() {
       const m = d.menu;
       setTitle(m.title || ''); setIntro(m.intro || ''); setImage(m.image || '');
       setRecipes(m.recipes?.length ? m.recipes.map(norm) : [empty()]);
+      setTracked(m.tracked !== false); setCodes([]);
       if (keepSlug) { setDate(m.date); setMessage(m.message); } else { setDate(todayISO()); setMessage(1); }
       setResult(null); setErr(''); setBulk(''); setView('publish'); setNavOpen(false);
     } catch (e) { setErr(String(e)); }
@@ -150,7 +153,7 @@ export default function AdminPage() {
       const d = await r.json(); if (d.error) throw new Error(d.error);
       setRecipes((rs) => rs.map((rec, idx) => idx === i ? {
         ...rec,
-        url: d.finalUrl || rec.url,
+        url: tracked ? (d.finalUrl || rec.url) : rec.url, // במצב "מקורי" שומרים את הקישור כמו שהוא
         image: d.image || rec.image,
         title: d.title || rec.title,
         desc: d.desc || rec.desc,
@@ -188,15 +191,16 @@ export default function AdminPage() {
   }
 
   async function publish() {
-    setErr(''); setResult(null); setBusy('מפרסם...');
+    setErr(''); setResult(null); setCodes([]); setBusy('מפרסם...');
     try {
       const r = await fetch('/api/publish', {
         method: 'POST', headers: { 'Content-Type': 'application/json', 'x-admin-pass': pass },
-        body: JSON.stringify({ date, message, title, intro, image, recipes }),
+        body: JSON.stringify({ date, message, title, intro, image, tracked, recipes }),
       });
       const d = await r.json();
       if (!r.ok || d.error) throw new Error(d.error || 'failed');
       setResult({ url: d.url, slug: d.slug });
+      setCodes(d.codes || []);
       loadStats();
     } catch (e) { setErr(String(e)); }
     finally { setBusy(''); }
@@ -206,10 +210,13 @@ export default function AdminPage() {
   function buildWaMessage(): string {
     const origin = typeof window !== 'undefined' ? window.location.origin : '';
     const slug = `${date}-${message}`;
+    const sameSlug = !!result && result.slug === slug;
     const list = recipes.filter((r) => r.title && r.url);
     const block = list.map((r, i) => {
       const num = EMO[i] || `${i + 1}.`;
-      const link = `${origin}/go/${slug}/${i}/wa`;
+      const link = !tracked
+        ? r.url // מצב "מקורי": משאירים את קישור bit.ly כמו שהוא
+        : (sameSlug && codes[i] ? `${origin}/s/${codes[i]}` : `${origin}/go/${slug}/${i}/wa`);
       const lines = [`${num} *${r.title}*`];
       if (r.desc) lines.push(r.desc);
       lines.push(link);
@@ -355,6 +362,21 @@ export default function AdminPage() {
   function renderPublish() {
     return (
       <>
+        <section className="admin-card">
+          <div className="mode-row">
+            <div>
+              <strong style={{ fontSize: 15 }}>מצב קישורים</strong>
+              <p className="admin-hint" style={{ marginTop: 4 }}>
+                {tracked ? 'קישורים חדשים קצרים עם מעקב (וואטסאפ / עמוד)' : 'שמירת הקישורים המקוריים (bit.ly) — ללא מעקב'}
+              </p>
+            </div>
+            <div className="mode-toggle">
+              <button className={`mode-btn${tracked ? ' on' : ''}`} onClick={() => setTracked(true)}>מעקב</button>
+              <button className={`mode-btn${!tracked ? ' on' : ''}`} onClick={() => setTracked(false)}>מקורי</button>
+            </div>
+          </div>
+        </section>
+
         <section className="admin-card">
           <h2 className="admin-h2">פרטי התפריט</h2>
           <div className="admin-row3">
