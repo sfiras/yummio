@@ -21,6 +21,7 @@ export default function AdminPage() {
   const [message, setMessage] = useState(1);
   const [title, setTitle] = useState('');
   const [intro, setIntro] = useState('');
+  const [image, setImage] = useState('');
   const [recipes, setRecipes] = useState<Recipe[]>([empty()]);
   const [bulk, setBulk] = useState('');
   const [busy, setBusy] = useState('');
@@ -107,7 +108,7 @@ export default function AdminPage() {
       const r = await fetch('/api/publish', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'x-admin-pass': pass },
-        body: JSON.stringify({ date, message, title, intro, recipes }),
+        body: JSON.stringify({ date, message, title, intro, image, recipes }),
       });
       const d = await r.json();
       if (!r.ok || d.error) throw new Error(d.error || 'failed');
@@ -190,6 +191,14 @@ export default function AdminPage() {
               מבוא (טקסט שמופיע מתחת לכותרת)
               <textarea className="admin-input" rows={2} style={{ marginTop: 6 }} placeholder="טקסט פתיחה קצר ומזמין... (מתמלא אוטומטית מהטקסט שתדביקו למטה)" value={intro} onChange={(e) => setIntro(e.target.value)} />
             </label>
+            <label style={{ display: 'block', marginTop: 12, fontSize: 13, fontWeight: 700, color: 'var(--ink-soft)' }}>
+              תמונת תצוגה לוואטסאפ (לא חובה — ברירת מחדל: תמונת המתכון הראשון)
+              <div className="admin-inline" style={{ marginTop: 6 }}>
+                <input className="admin-input" placeholder="קישור תמונה..." value={image} onChange={(e) => setImage(e.target.value)} />
+                <button className="admin-btn sm" type="button" onClick={() => setImage(recipes[0]?.image || '')}>מהמתכון הראשון</button>
+              </div>
+            </label>
+            {image && <img className="admin-preview" src={image} alt="" style={{ width: 200, height: 110 }} />}
             <p className="admin-hint">הקישור יהיה: <code>/menu/{date}-{message}</code></p>
           </section>
 
