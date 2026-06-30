@@ -1,7 +1,10 @@
 'use client';
 import { useEffect, useState } from 'react';
 
-type Recipe = { url: string; image: string; title: string; desc: string; time: string; level: string };
+type Recipe = {
+  url: string; image: string; title: string; desc: string; time: string; level: string;
+  author: string; msgTitle: string; msgDesc: string;
+};
 type StatRecipe = { i: number; title: string; wa: number; page: number; total: number };
 type StatMenu = {
   slug: string; title: string; dateLabel: string; message: number;
@@ -9,11 +12,20 @@ type StatMenu = {
 };
 type View = 'overview' | 'publish' | 'menus' | 'stats' | 'settings';
 
-const empty = (): Recipe => ({ url: '', image: '', title: '', desc: '', time: '', level: 'קל' });
-const todayISO = () => new Date().toLocaleDateString('en-CA');
+const empty = (): Recipe => ({ url: '', image: '', title: '', desc: '', time: '', level: '', author: '', msgTitle: '', msgDesc: '' });
 const norm = (r: Partial<Recipe>): Recipe => ({
-  url: r.url || '', image: r.image || '', title: r.title || '', desc: r.desc || '', time: r.time || '', level: r.level || 'קל',
+  url: r.url || '', image: r.image || '', title: r.title || '', desc: r.desc || '',
+  time: r.time || '', level: r.level || '', author: r.author || '', msgTitle: '', msgDesc: '',
 });
+const todayISO = () => new Date().toLocaleDateString('en-CA');
+const EMO = ['1️⃣', '2️⃣', '3️⃣', '4️⃣', '5️⃣', '6️⃣', '7️⃣', '8️⃣', '9️⃣', '🔟'];
+
+const WA_DEFAULTS = {
+  opening: 'עוד לא סגרתם את התפריט? הנה כמה רעיונות ששווה לשמור עכשיו 😋',
+  notes: '*אם קישור לא נפתח, שמרו את המספר שלנו באנשי הקשר ונסו שוב.*\n*תשתפו את קישור הקבוצה שכל החברות ייהנו גם!*',
+  group: '',
+  closing: 'תשמרו עכשיו, תודו לעצמכם מחר ❤️\n*מתוקים*',
+};
 
 const NAV: { id: View; label: string; icon: string }[] = [
   { id: 'overview', label: 'ראשי', icon: '🏠' },
@@ -28,11 +40,9 @@ export default function AdminPage() {
   const [authed, setAuthed] = useState(false);
   const [authErr, setAuthErr] = useState('');
   const [theme, setTheme] = useState<'light' | 'dark'>('light');
-
   const [view, setView] = useState<View>('overview');
   const [navOpen, setNavOpen] = useState(false);
 
-  // composer
   const [date, setDate] = useState(todayISO());
   const [message, setMessage] = useState(1);
   const [title, setTitle] = useState('');
@@ -41,11 +51,15 @@ export default function AdminPage() {
   const [recipes, setRecipes] = useState<Recipe[]>([empty()]);
   const [bulk, setBulk] = useState('');
   const [busy, setBusy] = useState('');
-  const [result, setResult] = useState<{ url: string; slug: string; recipes: Recipe[] } | null>(null);
-  const [waLinks, setWaLinks] = useState<{ title: string; short: string }[] | null>(null);
+  const [result, setResult] = useState<{ url: string; slug: string } | null>(null);
   const [err, setErr] = useState('');
 
-  // stats
+  // WhatsApp message template
+  const [waOpening, setWaOpening] = useState(WA_DEFAULTS.opening);
+  const [waNotes, setWaNotes] = useState(WA_DEFAULTS.notes);
+  const [waGroup, setWaGroup] = useState(WA_DEFAULTS.group);
+  const [waClosing, setWaClosing] = useState(WA_DEFAULTS.closing);
+
   const [stats, setStats] = useState<StatMenu[] | null>(null);
   const [statsBusy, setStatsBusy] = useState(false);
   const [menuQuery, setMenuQuery] = useState('');
@@ -53,9 +67,21 @@ export default function AdminPage() {
   useEffect(() => {
     const t = (document.documentElement.getAttribute('data-theme') as 'light' | 'dark') || 'light';
     setTheme(t);
+    try {
+      const tpl = JSON.parse(localStorage.getItem('yummio-wa-tpl') || '{}');
+      if (tpl.opening !== undefined) setWaOpening(tpl.opening);
+      if (tpl.notes !== undefined) setWaNotes(tpl.notes);
+      if (tpl.group !== undefined) setWaGroup(tpl.group);
+      if (tpl.closing !== undefined) setWaClosing(tpl.closing);
+    } catch {}
     const saved = sessionStorage.getItem('yummio-admin-pass');
     if (saved) { setPass(saved); verify(saved); }
   }, []);
+
+  function saveTpl(next: Partial<{ opening: string; notes: string; group: string; closing: string }>) {
+    const tpl = { opening: waOpening, notes: waNotes, group: waGroup, closing: waClosing, ...next };
+    try { localStorage.setItem('yummio-wa-tpl', JSON.stringify(tpl)); } catch {}
+  }
 
   function toggleTheme() {
     const next = theme === 'dark' ? 'light' : 'dark';
@@ -83,7 +109,6 @@ export default function AdminPage() {
     finally { setStatsBusy(false); }
   }
 
-  // ---- composer helpers ----
   function update(i: number, field: keyof Recipe, val: string) {
     setRecipes((rs) => rs.map((r, idx) => (idx === i ? { ...r, [field]: val } : r)));
   }
@@ -93,9 +118,12 @@ export default function AdminPage() {
       const c = [...rs]; [c[i], c[j]] = [c[j], c[i]]; return c;
     });
   }
+  function restoreFromMsg(i: number) {
+    setRecipes((rs) => rs.map((r, idx) => idx === i ? { ...r, title: r.msgTitle || r.title, desc: r.msgDesc || r.desc } : r));
+  }
   function resetComposer() {
     setTitle(''); setIntro(''); setImage(''); setRecipes([empty()]);
-    setDate(todayISO()); setMessage(1); setBulk(''); setResult(null); setWaLinks(null); setErr('');
+    setDate(todayISO()); setMessage(1); setBulk(''); setResult(null); setErr('');
   }
   function goPublishNew() { resetComposer(); setView('publish'); setNavOpen(false); }
 
@@ -103,19 +131,17 @@ export default function AdminPage() {
     setBusy('טוען תפריט...');
     try {
       const r = await fetch(`/api/menu?slug=${encodeURIComponent(slug)}`, { headers: { 'x-admin-pass': pass } });
-      const d = await r.json();
-      if (!d.menu) throw new Error('not found');
+      const d = await r.json(); if (!d.menu) throw new Error('not found');
       const m = d.menu;
       setTitle(m.title || ''); setIntro(m.intro || ''); setImage(m.image || '');
       setRecipes(m.recipes?.length ? m.recipes.map(norm) : [empty()]);
-      if (keepSlug) { setDate(m.date); setMessage(m.message); }
-      else { setDate(todayISO()); setMessage(1); }
-      setResult(null); setWaLinks(null); setErr(''); setBulk('');
-      setView('publish'); setNavOpen(false);
+      if (keepSlug) { setDate(m.date); setMessage(m.message); } else { setDate(todayISO()); setMessage(1); }
+      setResult(null); setErr(''); setBulk(''); setView('publish'); setNavOpen(false);
     } catch (e) { setErr(String(e)); }
     finally { setBusy(''); }
   }
 
+  // מושך מהאתר: עוקב אחרי bit.ly (resolve), כותרת נקייה, תיאור, ושם בעל המתכון
   async function fetchMeta(i: number) {
     const url = recipes[i].url.trim(); if (!url) return;
     setBusy(`מושך מתכון ${i + 1}...`);
@@ -123,33 +149,46 @@ export default function AdminPage() {
       const r = await fetch(`/api/scrape?url=${encodeURIComponent(url)}`, { headers: { 'x-admin-pass': pass } });
       const d = await r.json(); if (d.error) throw new Error(d.error);
       setRecipes((rs) => rs.map((rec, idx) => idx === i ? {
-        ...rec, image: d.image || rec.image, title: rec.title || d.title || '', desc: rec.desc || d.desc || '',
+        ...rec,
+        url: d.finalUrl || rec.url,
+        image: d.image || rec.image,
+        title: d.title || rec.title,
+        desc: d.desc || rec.desc,
+        author: d.author || rec.author,
       } : rec));
     } catch (e) { setErr(`משיכת מתכון ${i + 1} נכשלה: ${e}`); }
     finally { setBusy(''); }
   }
   async function fetchAll() {
-    for (let i = 0; i < recipes.length; i++) if (recipes[i].url.trim() && !recipes[i].image) await fetchMeta(i);
+    for (let i = 0; i < recipes.length; i++) if (recipes[i].url.trim()) await fetchMeta(i);
   }
 
+  // מפענח הודעת וואטסאפ: שם (עם כוכביות/אימוג'י) + תיאור + קישור
   function parseBulk() {
     const lines = bulk.split('\n');
-    const firstUrlIdx = lines.findIndex((l) => /https?:\/\//.test(l));
-    if (firstUrlIdx > 0) {
-      const introText = lines.slice(0, firstUrlIdx).map((l) => l.trim()).filter(Boolean).join('\n');
-      if (introText) setIntro(introText);
-    }
-    const urlRe = /(https?:\/\/[^\s]+)/;
     const rows: Recipe[] = [];
-    for (const line of lines) {
-      const m = line.match(urlRe); if (!m) continue;
-      const r = empty(); r.url = m[1]; r.title = line.replace(m[1], '').replace(/[•\-–—:]/g, ' ').trim(); rows.push(r);
+    for (let k = 0; k < lines.length; k++) {
+      const m = lines[k].match(/(https?:\/\/[^\s]+)/);
+      if (!m) continue;
+      const block: string[] = [];
+      for (let j = k - 1; j >= 0; j--) {
+        const ln = lines[j].trim();
+        if (!ln) break;
+        if (/https?:\/\//.test(ln)) break;
+        block.unshift(ln);
+      }
+      let name = (block[0] || '').replace(/\*/g, '').replace(/^[\s\d#.\)\-–—•*️⃣]+/u, '').trim();
+      const desc = block.slice(1).join(' ').replace(/\*/g, '').trim();
+      if (!name) name = '(ללא שם)';
+      const r = empty();
+      r.url = m[1]; r.title = name; r.desc = desc; r.msgTitle = name; r.msgDesc = desc;
+      rows.push(r);
     }
     if (rows.length) { setRecipes(rows); setBulk(''); } else setErr('לא נמצאו קישורים בטקסט');
   }
 
   async function publish() {
-    setErr(''); setResult(null); setWaLinks(null); setBusy('מפרסם...');
+    setErr(''); setResult(null); setBusy('מפרסם...');
     try {
       const r = await fetch('/api/publish', {
         method: 'POST', headers: { 'Content-Type': 'application/json', 'x-admin-pass': pass },
@@ -157,33 +196,34 @@ export default function AdminPage() {
       });
       const d = await r.json();
       if (!r.ok || d.error) throw new Error(d.error || 'failed');
-      const clean = recipes.filter((x) => x.title && x.url);
-      setResult({ url: d.url, slug: d.slug, recipes: clean });
+      setResult({ url: d.url, slug: d.slug });
       loadStats();
-      try {
-        const origin = window.location.origin;
-        const items = clean.map((r2, i) => ({ title: r2.title, long_url: `${origin}/go/${d.slug}/${i}/wa` }));
-        const sr = await fetch('/api/shorten', {
-          method: 'POST', headers: { 'Content-Type': 'application/json', 'x-admin-pass': pass }, body: JSON.stringify({ items }),
-        });
-        const sd = await sr.json();
-        if (sd.links && sd.links.length) setWaLinks(sd.links);
-      } catch {}
     } catch (e) { setErr(String(e)); }
     finally { setBusy(''); }
   }
 
-  function waLinksText(slug: string, list: Recipe[]) {
+  // ---- WhatsApp message ----
+  function buildWaMessage(): string {
     const origin = typeof window !== 'undefined' ? window.location.origin : '';
-    return list.map((r, i) => `${r.title}\n${origin}/go/${slug}/${i}/wa`).join('\n\n');
-  }
-  function waBlock(): string {
-    if (!result) return '';
-    if (waLinks && waLinks.length) return waLinks.map((l) => `${l.title}\n${l.short}`).join('\n\n');
-    return waLinksText(result.slug, result.recipes);
+    const slug = `${date}-${message}`;
+    const list = recipes.filter((r) => r.title && r.url);
+    const block = list.map((r, i) => {
+      const num = EMO[i] || `${i + 1}.`;
+      const link = `${origin}/go/${slug}/${i}/wa`;
+      const lines = [`${num} *${r.title}*`];
+      if (r.desc) lines.push(r.desc);
+      lines.push(link);
+      return lines.join('\n');
+    }).join('\n\n');
+    const parts: string[] = [`${origin}/menu/${slug}`];
+    if (waOpening.trim()) parts.push(waOpening.trim());
+    const ng = [waNotes.trim(), waGroup.trim()].filter(Boolean).join('\n');
+    if (ng) parts.push(ng);
+    if (block) parts.push(block);
+    if (waClosing.trim()) parts.push(waClosing.trim());
+    return parts.join('\n\n');
   }
 
-  // ---- KPIs ----
   const totals = (() => {
     if (!stats) return null;
     const views = stats.reduce((s, m) => s + m.views, 0);
@@ -193,7 +233,6 @@ export default function AdminPage() {
     return { views, clicks, ctr: views ? Math.round((clicks / views) * 100) : 0, menus: stats.length, top };
   })();
 
-  // ===================== GATE =====================
   if (!authed) {
     return (
       <main className="admin-gate">
@@ -211,7 +250,6 @@ export default function AdminPage() {
 
   const sectionTitle = NAV.find((n) => n.id === view)?.label || '';
 
-  // ===================== SHELL =====================
   return (
     <div className="studio">
       {navOpen && <div className="nav-backdrop" onClick={() => setNavOpen(false)} />}
@@ -219,8 +257,7 @@ export default function AdminPage() {
         <div className="studio-logo"><span className="dot">🍳</span> Yumm<b>io</b> <span className="studio-logo-sub">Studio</span></div>
         <nav className="studio-navlist">
           {NAV.map((n) => (
-            <button key={n.id} className={`nav-item${view === n.id ? ' active' : ''}`}
-              onClick={() => { setView(n.id); setNavOpen(false); }}>
+            <button key={n.id} className={`nav-item${view === n.id ? ' active' : ''}`} onClick={() => { setView(n.id); setNavOpen(false); }}>
               <span className="nav-ico">{n.icon}</span> {n.label}
             </button>
           ))}
@@ -239,7 +276,6 @@ export default function AdminPage() {
           </div>
           {view !== 'publish' && <button className="admin-btn sm" onClick={goPublishNew}>+ תפריט חדש</button>}
         </header>
-
         <div className="studio-content">
           {view === 'overview' && renderOverview()}
           {view === 'publish' && renderPublish()}
@@ -251,7 +287,6 @@ export default function AdminPage() {
     </div>
   );
 
-  // ===================== VIEWS =====================
   function renderOverview() {
     return (
       <>
@@ -261,7 +296,6 @@ export default function AdminPage() {
           <div className="kpi"><div className="kpi-label">📈 CTR ממוצע</div><div className="kpi-val">{totals ? totals.ctr + '%' : '—'}</div></div>
           <div className="kpi"><div className="kpi-label">🗂️ תפריטים</div><div className="kpi-val">{totals ? totals.menus : '—'}</div></div>
         </div>
-
         {totals && totals.top.total > 0 && (
           <div className="admin-card" style={{ marginTop: 16 }}>
             <div className="kpi-label">🏆 המתכון המוביל</div>
@@ -271,26 +305,23 @@ export default function AdminPage() {
             </div>
           </div>
         )}
-
         <div className="cta-row">
           <button className="admin-btn big" style={{ flex: 1 }} onClick={goPublishNew}>✍️ פרסם תפריט חדש</button>
           <button className="admin-btn ghost big" style={{ flex: 1 }} onClick={() => setView('menus')}>🗂️ כל התפריטים</button>
         </div>
-
         <div className="admin-h2-row" style={{ marginTop: 22 }}>
           <h2 className="admin-h2">תפריטים אחרונים</h2>
           <button className="admin-btn ghost sm" onClick={() => loadStats()}>רענן</button>
         </div>
         {statsBusy && <p className="admin-busy">טוען...</p>}
         {stats && stats.slice(0, 5).map((m) => menuRow(m))}
-        {stats && stats.length === 0 && <p className="admin-hint">אין תפריטים עדיין. לחצו "פרסם תפריט חדש".</p>}
+        {stats && stats.length === 0 && <p className="admin-hint">אין תפריטים עדיין.</p>}
       </>
     );
   }
 
   function renderMenus() {
-    const list = (stats || []).filter((m) =>
-      !menuQuery || m.title.includes(menuQuery) || m.slug.includes(menuQuery) || m.dateLabel.includes(menuQuery));
+    const list = (stats || []).filter((m) => !menuQuery || m.title.includes(menuQuery) || m.slug.includes(menuQuery) || m.dateLabel.includes(menuQuery));
     return (
       <>
         <input className="admin-input" placeholder="🔍 חיפוש לפי שם / תאריך..." value={menuQuery} onChange={(e) => setMenuQuery(e.target.value)} style={{ marginBottom: 14 }} />
@@ -333,7 +364,7 @@ export default function AdminPage() {
           </div>
           <label style={{ display: 'block', marginTop: 12, fontSize: 13, fontWeight: 700, color: 'var(--ink-soft)' }}>
             מבוא (טקסט שמופיע מתחת לכותרת)
-            <textarea className="admin-input" rows={2} style={{ marginTop: 6 }} placeholder="טקסט פתיחה קצר ומזמין... (מתמלא אוטומטית מהטקסט שתדביקו למטה)" value={intro} onChange={(e) => setIntro(e.target.value)} />
+            <textarea className="admin-input" rows={2} style={{ marginTop: 6 }} placeholder="טקסט פתיחה קצר ומזמין..." value={intro} onChange={(e) => setIntro(e.target.value)} />
           </label>
           <label style={{ display: 'block', marginTop: 12, fontSize: 13, fontWeight: 700, color: 'var(--ink-soft)' }}>
             תמונת תצוגה לוואטסאפ (לא חובה — ברירת מחדל: תמונת המתכון הראשון)
@@ -348,11 +379,12 @@ export default function AdminPage() {
 
         <section className="admin-card">
           <h2 className="admin-h2">הדבקה מהירה מהודעת וואטסאפ</h2>
-          <textarea className="admin-input" rows={4} placeholder="הדביקו את כל טקסט ההודעה (מבוא למעלה, ואז שם מתכון + קישור בכל שורה)..." value={bulk} onChange={(e) => setBulk(e.target.value)} />
+          <textarea className="admin-input" rows={4} placeholder="הדביקו את כל טקסט ההודעה (גם הודעה ישנה עם bit.ly — נזהה ונמיר אוטומטית)..." value={bulk} onChange={(e) => setBulk(e.target.value)} />
           <div className="admin-actions">
-            <button className="admin-btn ghost" onClick={parseBulk}>חלץ מבוא + מתכונים מהטקסט</button>
-            <button className="admin-btn ghost" onClick={fetchAll}>משוך את כל התמונות והכותרות אוטומטית</button>
+            <button className="admin-btn ghost" onClick={parseBulk}>חלץ מתכונים מהטקסט</button>
+            <button className="admin-btn ghost" onClick={fetchAll}>משוך הכול מהאתר (תמונה/כותרת/בעל מתכון)</button>
           </div>
+          <p className="admin-hint" style={{ marginTop: 8 }}>טיפ: "חלץ" שומר את הטקסט מההודעה; "משוך מהאתר" מחליף לגרסת האתר (אפשר להחזיר לכל מתכון בנפרד).</p>
         </section>
 
         <section className="admin-card">
@@ -368,19 +400,21 @@ export default function AdminPage() {
                   <button onClick={() => move(i, -1)} aria-label="למעלה">↑</button>
                   <button onClick={() => move(i, 1)} aria-label="למטה">↓</button>
                 </div>
-                <button className="admin-del" onClick={() => setRecipes((rs) => rs.filter((_, idx) => idx !== i))} aria-label="מחיקה">✕</button>
+                {(r.msgTitle || r.msgDesc) && <button className="admin-btn ghost sm" onClick={() => restoreFromMsg(i)} title="החזר טקסט מההודעה">↻ מההודעה</button>}
+                <button className="admin-del" onClick={() => setRecipes((rs) => rs.filter((_, idx) => idx !== i))} aria-label="מחיקה" style={{ marginInlineStart: 'auto' }}>✕</button>
               </div>
               <div className="admin-recipe-grid">
-                <label className="full">קישור המתכון (yummio)
+                <label className="full">קישור המתכון
                   <div className="admin-inline">
-                    <input className="admin-input" placeholder="https://..." value={r.url} onChange={(e) => update(i, 'url', e.target.value)} />
+                    <input className="admin-input" placeholder="https://... (גם bit.ly)" value={r.url} onChange={(e) => update(i, 'url', e.target.value)} />
                     <button className="admin-btn sm" onClick={() => fetchMeta(i)}>משוך</button>
                   </div>
                 </label>
                 <label className="full">כותרת<input className="admin-input" value={r.title} onChange={(e) => update(i, 'title', e.target.value)} /></label>
                 <label className="full">תיאור<input className="admin-input" value={r.desc} onChange={(e) => update(i, 'desc', e.target.value)} /></label>
-                <label>זמן הכנה<input className="admin-input" placeholder="15 דק׳" value={r.time} onChange={(e) => update(i, 'time', e.target.value)} /></label>
-                <label>רמה<input className="admin-input" placeholder="קל" value={r.level} onChange={(e) => update(i, 'level', e.target.value)} /></label>
+                <label className="full">בעל המתכון (אופציונלי)<input className="admin-input" placeholder="נמשך אוטומטית" value={r.author} onChange={(e) => update(i, 'author', e.target.value)} /></label>
+                <label>זמן הכנה (אופ׳)<input className="admin-input" placeholder="15 דק׳" value={r.time} onChange={(e) => update(i, 'time', e.target.value)} /></label>
+                <label>רמה (אופ׳)<input className="admin-input" placeholder="קל" value={r.level} onChange={(e) => update(i, 'level', e.target.value)} /></label>
                 <label className="full">קישור תמונה<input className="admin-input" placeholder="מתמלא אוטומטית במשיכה" value={r.image} onChange={(e) => update(i, 'image', e.target.value)} /></label>
               </div>
               {r.image && <img className="admin-preview" src={r.image} alt="" />}
@@ -389,19 +423,22 @@ export default function AdminPage() {
           <button className="admin-btn big publish-inline" onClick={publish} disabled={!!busy}>🚀 פרסם תפריט</button>
           {busy && <p className="admin-busy" style={{ textAlign: 'center', marginTop: 10 }}>{busy}</p>}
           {err && <p className="admin-err" style={{ textAlign: 'center', marginTop: 10 }}>{err}</p>}
+          {result && <p className="admin-ok" style={{ textAlign: 'center', marginTop: 10 }}>✅ פורסם! יופיע באתר תוך ~30 שניות: <a href={result.url} target="_blank">{result.url}</a></p>}
         </section>
 
-        {result && (
-          <section className="admin-card" style={{ borderColor: 'var(--accent)' }}>
-            <p className="admin-ok" style={{ fontSize: 15 }}>✅ פורסם! יופיע באתר תוך ~30 שניות: <a href={result.url} target="_blank">{result.url}</a></p>
-            <h2 className="admin-h2" style={{ marginTop: 16 }}>קישורים להודעת וואטסאפ</h2>
-            <p className="admin-hint" style={{ marginBottom: 8 }}>
-              {waLinks && waLinks.length ? 'קישורי bit.ly מתויגים whatsapp — מוכנים להדבקה.' : 'קישורים מוכנים להדבקה (נספרים כ-whatsapp).'}
-            </p>
-            <textarea className="admin-input" rows={8} readOnly value={waBlock()} onClick={(e) => (e.target as HTMLTextAreaElement).select()} />
-            <button className="admin-btn ghost sm" style={{ marginTop: 8 }} onClick={() => navigator.clipboard?.writeText(waBlock())}>העתק הכול</button>
-          </section>
-        )}
+        <section className="admin-card" style={{ borderColor: 'var(--brand)' }}>
+          <h2 className="admin-h2">📲 הודעת וואטסאפ מוכנה</h2>
+          <p className="admin-hint" style={{ marginBottom: 10 }}>הטקסטים הקבועים נשמרים אצלכם. הקישורים פעילים אחרי פרסום התפריט.</p>
+          <div className="admin-recipe-grid">
+            <label className="full">פתיח<textarea className="admin-input" rows={2} value={waOpening} onChange={(e) => { setWaOpening(e.target.value); saveTpl({ opening: e.target.value }); }} /></label>
+            <label className="full">הערות קבועות<textarea className="admin-input" rows={2} value={waNotes} onChange={(e) => { setWaNotes(e.target.value); saveTpl({ notes: e.target.value }); }} /></label>
+            <label className="full">קישור הקבוצה<input className="admin-input" placeholder="https://chat.whatsapp.com/..." value={waGroup} onChange={(e) => { setWaGroup(e.target.value); saveTpl({ group: e.target.value }); }} /></label>
+            <label className="full">סיום<textarea className="admin-input" rows={2} value={waClosing} onChange={(e) => { setWaClosing(e.target.value); saveTpl({ closing: e.target.value }); }} /></label>
+          </div>
+          <h3 style={{ fontSize: 14, fontWeight: 800, margin: '14px 0 6px' }}>הטקסט המלא להעתקה:</h3>
+          <textarea className="admin-input" rows={14} readOnly value={buildWaMessage()} onClick={(e) => (e.target as HTMLTextAreaElement).select()} style={{ fontFamily: 'inherit' }} />
+          <button className="admin-btn big" style={{ marginTop: 10, width: '100%' }} onClick={() => navigator.clipboard?.writeText(buildWaMessage())}>📋 העתק את כל ההודעה</button>
+        </section>
       </>
     );
   }
@@ -454,9 +491,9 @@ export default function AdminPage() {
         </div>
         <div className="admin-card">
           <h2 className="admin-h2">תזכורות</h2>
-          <p className="admin-hint">• טוקן GitHub פג בערך ב-30 ביולי 2026 — אז הפרסום מהלוח ייעצר עד שניצור טוקן חדש.</p>
-          <p className="admin-hint" style={{ marginTop: 6 }}>• bitly חינמי = 5 קישורים/חודש. לכמות גדולה — דומיין קצר משלך (בקרוב).</p>
-          <p className="admin-hint" style={{ marginTop: 6 }}>• AdSense עדיין לא חובר (NEXT_PUBLIC_ADSENSE_CLIENT + ads.txt).</p>
+          <p className="admin-hint">• טוקן GitHub פג בערך ב-30 ביולי 2026 — לחדש אז.</p>
+          <p className="admin-hint" style={{ marginTop: 6 }}>• העלאת תמונות + מעקב שליחה חוזרת — בקרוב.</p>
+          <p className="admin-hint" style={{ marginTop: 6 }}>• AdSense עדיין לא חובר.</p>
         </div>
         <button className="admin-btn ghost" onClick={() => { sessionStorage.removeItem('yummio-admin-pass'); location.reload(); }}>התנתק</button>
       </>
