@@ -18,6 +18,7 @@ export type Menu = {
   title?: string;    // כותרת אופציונלית
   intro?: string;    // טקסט מבוא שמופיע מתחת לכותרת בעמוד
   image?: string;    // תמונת תצוגה (og:image) לתצוגה מקדימה בוואטסאפ
+  tracked?: boolean; // false = שמירת קישורים מקוריים ללא מעקב (ברירת מחדל: true)
   recipes: Recipe[];
 };
 
