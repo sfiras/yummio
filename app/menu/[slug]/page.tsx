@@ -91,7 +91,7 @@ export default function MenuPage({ params }: { params: { slug: string } }) {
                 index={i}
                 isLast={i === menu.recipes.length - 1}
               >
-                <RecipeCard recipe={recipe} number={i + 1} menuSlug={menu.slug} priority={i === 0} />
+                <RecipeCard recipe={recipe} number={i + 1} menuSlug={menu.slug} tracked={menu.tracked !== false} priority={i === 0} />
               </ReactFragmentWithAd>
             ))}
           </div>
