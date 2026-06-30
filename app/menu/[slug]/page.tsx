@@ -20,10 +20,14 @@ export function generateMetadata({ params }: { params: { slug: string } }): Meta
   if (!menu) return { title: 'Yummio' };
   const title = `${menu.title || 'תפריט'} · ${formatHebrewDate(menu.date)} | Yummio`;
   const description = `${menu.recipes.length} מתכונים טעימים ומהירים — ${menu.recipes.slice(0, 3).map((r) => r.title).join(' · ')}`;
+  // תמונת תצוגה לוואטסאפ: התמונה שנבחרה לתפריט, אחרת תמונת המתכון הראשון
+  const ogImage = menu.image?.trim() || menu.recipes[0]?.image;
+  const images = ogImage ? [ogImage] : [];
   return {
     title,
     description,
-    openGraph: { title, description, images: [menu.recipes[0]?.image], type: 'article' },
+    openGraph: { title, description, images, type: 'article', url: `/menu/${menu.slug}` },
+    twitter: { card: 'summary_large_image', title, description, images },
   };
 }
 
