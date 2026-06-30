@@ -31,9 +31,10 @@ export default function RecipeCard({
       <SaveButton />
       <div className="body">
         <h3>{recipe.title}</h3>
+        {recipe.author && <span className="recipe-author">👩‍🍳 {recipe.author}</span>}
         <p className="desc">{recipe.desc}</p>
         <div className="foot">
-          <span className="stat">📊 {recipe.level}</span>
+          <span className="stat">{recipe.level ? `📊 ${recipe.level}` : ''}</span>
           <a className="btn-go" href={href} target="_blank" rel="noopener">למתכון ←</a>
         </div>
       </div>
