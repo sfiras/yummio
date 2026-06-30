@@ -4,6 +4,7 @@ import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import RecipeCard from '@/components/RecipeCard';
 import AdSlot from '@/components/AdSlot';
+import ViewBeacon from '@/components/ViewBeacon';
 import { getAllMenus, getMenu, getMenusForDate, formatHebrewDate } from '@/lib/menus';
 
 // בנייה סטטית מראש לכל תפריט + רענון אוטומטי כל שעה (ISR)
@@ -37,6 +38,7 @@ export default function MenuPage({ params }: { params: { slug: string } }) {
   return (
     <>
       <Header />
+      <ViewBeacon slug={menu.slug} />
       <main className="wrap">
         <section className="hero">
           <span className="pill">
@@ -85,7 +87,7 @@ export default function MenuPage({ params }: { params: { slug: string } }) {
                 index={i}
                 isLast={i === menu.recipes.length - 1}
               >
-                <RecipeCard recipe={recipe} number={i + 1} priority={i === 0} />
+                <RecipeCard recipe={recipe} number={i + 1} menuSlug={menu.slug} priority={i === 0} />
               </ReactFragmentWithAd>
             ))}
           </div>
