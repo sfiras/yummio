@@ -1,0 +1,48 @@
+import { NextResponse } from 'next/server';
+import { getAllMenus, formatHebrewDate } from '@/lib/menus';
+import { kvMGet } from '@/lib/kv';
+
+export const dynamic = 'force-dynamic';
+
+// מחזיר סטטיסטיקות לכל התפריטים: צפיות בעמוד + קליקים לכל מתכון (וואטסאפ מול עמוד)
+export async function POST(req: Request) {
+  if (req.headers.get('x-admin-pass') !== process.env.ADMIN_PASSWORD) {
+    return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
+  }
+
+  const menus = getAllMenus();
+  const keys: string[] = [];
+  for (const m of menus) {
+    keys.push(`v:${m.slug}`);
+    m.recipes.forEach((_, i) => keys.push(`c:${m.slug}:${i}:wa`, `c:${m.slug}:${i}:page`));
+  }
+
+  const vals = await kvMGet(keys);
+
+  let p = 0;
+  const out = menus.map((m) => {
+    const views = vals[p++] || 0;
+    const recipes = m.recipes.map((r, i) => {
+      const wa = vals[p++] || 0;
+      const page = vals[p++] || 0;
+      return { i, title: r.title, wa, page, total: wa + page };
+    });
+    const waTotal = recipes.reduce((s, x) => s + x.wa, 0);
+    const pageTotal = recipes.reduce((s, x) => s + x.page, 0);
+    const clicks = waTotal + pageTotal;
+    return {
+      slug: m.slug,
+      title: m.title || m.slug,
+      dateLabel: formatHebrewDate(m.date),
+      message: m.message,
+      views,
+      waTotal,
+      pageTotal,
+      clicks,
+      ctr: views ? Math.round((clicks / views) * 100) : 0,
+      recipes,
+    };
+  });
+
+  return NextResponse.json({ menus: out, kv: vals.some((v) => v > 0) });
+}
