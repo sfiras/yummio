@@ -25,6 +25,7 @@ export default function AdminPage() {
   const [bulk, setBulk] = useState('');
   const [busy, setBusy] = useState('');
   const [result, setResult] = useState<{ url: string; slug: string; recipes: Recipe[] } | null>(null);
+  const [waLinks, setWaLinks] = useState<{ title: string; short: string }[] | null>(null);
   const [err, setErr] = useState('');
 
   const [stats, setStats] = useState<StatMenu[] | null>(null);
@@ -101,7 +102,7 @@ export default function AdminPage() {
   }
 
   async function publish() {
-    setErr(''); setResult(null); setBusy('מפרסם...');
+    setErr(''); setResult(null); setWaLinks(null); setBusy('מפרסם...');
     try {
       const r = await fetch('/api/publish', {
         method: 'POST',
@@ -110,9 +111,27 @@ export default function AdminPage() {
       });
       const d = await r.json();
       if (!r.ok || d.error) throw new Error(d.error || 'failed');
-      setResult({ url: d.url, slug: d.slug, recipes: recipes.filter((x) => x.title && x.url) });
+      const clean = recipes.filter((x) => x.title && x.url);
+      setResult({ url: d.url, slug: d.slug, recipes: clean });
+      // קיצור קישורים ב-bitly (תגית whatsapp). אם אין טוקן — נשארים עם קישורי /go
+      try {
+        const origin = window.location.origin;
+        const items = clean.map((r2, i) => ({ title: r2.title, long_url: `${origin}/go/${d.slug}/${i}/wa` }));
+        const sr = await fetch('/api/shorten', {
+          method: 'POST', headers: { 'Content-Type': 'application/json', 'x-admin-pass': pass },
+          body: JSON.stringify({ items }),
+        });
+        const sd = await sr.json();
+        if (sd.links && sd.links.length) setWaLinks(sd.links);
+      } catch { /* fallback */ }
     } catch (e) { setErr(String(e)); }
     finally { setBusy(''); }
+  }
+
+  function waBlock(): string {
+    if (!result) return '';
+    if (waLinks && waLinks.length) return waLinks.map((l) => `${l.title}\n${l.short}`).join('\n\n');
+    return waLinksText(result.slug, result.recipes);
   }
 
   async function loadStats() {
@@ -225,10 +244,14 @@ export default function AdminPage() {
             <section className="admin-card" style={{ borderColor: 'var(--accent)' }}>
               <p className="admin-ok" style={{ fontSize: 15 }}>✅ פורסם! יופיע באתר תוך ~30 שניות: <a href={result.url} target="_blank">{result.url}</a></p>
               <h2 className="admin-h2" style={{ marginTop: 16 }}>קישורים להודעת וואטסאפ</h2>
-              <p className="admin-hint" style={{ marginBottom: 8 }}>העתיקו והדביקו את הקישורים האלה בהודעה — הם נספרים בנפרד (וואטסאפ) ולא צריך bitly.</p>
-              <textarea className="admin-input" rows={8} readOnly value={waLinksText(result.slug, result.recipes)} onClick={(e) => (e.target as HTMLTextAreaElement).select()} />
+              <p className="admin-hint" style={{ marginBottom: 8 }}>
+                {waLinks && waLinks.length
+                  ? 'קישורי bit.ly מתויגים whatsapp — מוכנים להדבקה בהודעה (נספרים בנפרד מקליקים בעמוד).'
+                  : 'קישורים מוכנים להדבקה (נספרים כ-whatsapp). חברו טוקן bitly ב-Vercel לקבלת bit.ly קצרים אוטומטית.'}
+              </p>
+              <textarea className="admin-input" rows={8} readOnly value={waBlock()} onClick={(e) => (e.target as HTMLTextAreaElement).select()} />
               <button className="admin-btn ghost sm" style={{ marginTop: 8 }}
-                onClick={() => navigator.clipboard?.writeText(waLinksText(result.slug, result.recipes))}>העתק הכול</button>
+                onClick={() => navigator.clipboard?.writeText(waBlock())}>העתק הכול</button>
             </section>
           )}
         </>
