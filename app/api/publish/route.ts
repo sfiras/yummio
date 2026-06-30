@@ -4,7 +4,7 @@ import { putFile } from '@/lib/github';
 export const dynamic = 'force-dynamic';
 
 type RecipeIn = {
-  image?: string; title?: string; desc?: string; url?: string; time?: string; level?: string;
+  image?: string; title?: string; desc?: string; url?: string; time?: string; level?: string; author?: string;
 };
 
 // מפרסם תפריט: כותב data/menus/<date>-<message>.json ל-GitHub => Vercel פורס אוטומטית
@@ -36,7 +36,8 @@ export async function POST(req: Request) {
       desc: (r.desc || '').trim(),
       url: (r.url || '').trim(),
       time: (r.time || '').trim(),
-      level: (r.level || 'קל').trim(),
+      level: (r.level || '').trim(),
+      author: (r.author || '').trim(),
     }))
     .filter((r) => r.title && r.url);
 
