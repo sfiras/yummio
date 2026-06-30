@@ -5,15 +5,17 @@ export default function RecipeCard({
   recipe,
   number,
   menuSlug,
+  tracked = true,
   priority = false,
 }: {
   recipe: Recipe;
   number: number;     // מספר המתכון (1, 2, 3...)
   menuSlug?: string;  // עבור מעקב קליקים
+  tracked?: boolean;  // false = קישור ישיר ללא מעקב
   priority?: boolean; // true למתכון הראשון (משפר LCP)
 }) {
-  // קישור דרך /go לספירת קליק (מקור: page = מתוך העמוד)
-  const href = menuSlug ? `/go/${menuSlug}/${number - 1}/page` : recipe.url;
+  // במצב מעקב: דרך /go לספירת קליק. אחרת: קישור מקורי ישיר.
+  const href = menuSlug && tracked ? `/go/${menuSlug}/${number - 1}/page` : recipe.url;
   return (
     <article className="card">
       <a className="thumb" href={href} target="_blank" rel="noopener">
