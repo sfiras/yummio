@@ -16,6 +16,7 @@ export type Menu = {
   message: number;   // מספר ההודעה באותו יום (1, 2, 3...)
   title?: string;    // כותרת אופציונלית
   intro?: string;    // טקסט מבוא שמופיע מתחת לכותרת בעמוד
+  image?: string;    // תמונת תצוגה (og:image) לתצוגה מקדימה בוואטסאפ
   recipes: Recipe[];
 };
 
