@@ -2,12 +2,13 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 export type Recipe = {
-  image: string;   // כתובת תמונה
-  title: string;   // שם המתכון
-  desc: string;    // תיאור מפתה קצר
-  url: string;     // קישור לעמוד המתכון ב-yummio
-  time: string;    // זמן הכנה, למשל "15 דק׳"
-  level: string;   // רמת קושי, למשל "קל"
+  image: string;    // כתובת תמונה
+  title: string;    // שם המתכון
+  desc: string;     // תיאור מפתה קצר
+  url: string;      // קישור לעמוד המתכון ב-yummio
+  time: string;     // זמן הכנה, למשל "15 דק׳"
+  level: string;    // רמת קושי (אופציונלי) — מוצג רק אם מולא
+  author?: string;  // שם בעל המתכון (אופציונלי)
 };
 
 export type Menu = {
