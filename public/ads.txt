@@ -1,2 +1,1 @@
-# استبدل السطر التالي بالسطر اللي بيعطيك ياه Google AdSense (Account → ads.txt)
-# google.com, pub-XXXXXXXXXXXXXXXX, DIRECT, f08c47fec0942fa0
+google.com, pub-2976097135497379, DIRECT, f08c47fec0942fa0
