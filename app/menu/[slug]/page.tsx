@@ -5,6 +5,10 @@ import Footer from '@/components/Footer';
 import RecipeCard from '@/components/RecipeCard';
 import AdSlot from '@/components/AdSlot';
 import ViewBeacon from '@/components/ViewBeacon';
+import AnchorAd from '@/components/AnchorAd';
+
+const AD_TOP = process.env.NEXT_PUBLIC_ADSENSE_SLOT_TOP;
+const AD_INFEED = process.env.NEXT_PUBLIC_ADSENSE_SLOT_INFEED;
 import { getAllMenus, getMenu, getMenusForDate, formatHebrewDate } from '@/lib/menus';
 
 // בנייה סטטית מראש לכל תפריט + רענון אוטומטי כל שעה (ISR)
@@ -76,7 +80,7 @@ export default function MenuPage({ params }: { params: { slug: string } }) {
         </section>
 
         {/* מודעת ראש העמוד */}
-        <AdSlot slot="TOP" minHeight={100} className="ad-leaderboard" />
+        <AdSlot slot={AD_TOP} minHeight={100} className="ad-leaderboard" />
 
         <section id="recipes">
           <div className="section-head">
@@ -100,6 +104,7 @@ export default function MenuPage({ params }: { params: { slug: string } }) {
         </section>
       </main>
       <Footer />
+      <AnchorAd />
     </>
   );
 }
@@ -118,7 +123,7 @@ function ReactFragmentWithAd({
   return (
     <>
       {children}
-      {showAd && <AdSlot slot="IN_FEED" format="fluid" minHeight={280} className="ad-infeed adcard" />}
+      {showAd && <AdSlot slot={AD_INFEED} format="fluid" minHeight={280} className="ad-infeed adcard" />}
     </>
   );
 }
