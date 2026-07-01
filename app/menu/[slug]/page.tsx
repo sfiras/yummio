@@ -123,7 +123,7 @@ function ReactFragmentWithAd({
   return (
     <>
       {children}
-      {showAd && <AdSlot slot={AD_INFEED} format="fluid" minHeight={280} className="ad-infeed adcard" />}
+      {showAd && <AdSlot slot={AD_INFEED} format="auto" minHeight={280} className="ad-infeed adcard" />}
     </>
   );
 }
