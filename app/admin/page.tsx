@@ -8,7 +8,8 @@ type Recipe = {
 type StatRecipe = { i: number; title: string; wa: number; page: number; total: number };
 type StatMenu = {
   slug: string; title: string; dateLabel: string; message: number;
-  views: number; waTotal: number; pageTotal: number; clicks: number; ctr: number; recipes: StatRecipe[];
+  views: number; waTotal: number; pageTotal: number; clicks: number; ctr: number;
+  sends?: number; lastSent?: string | null; recipes: StatRecipe[];
 };
 type View = 'overview' | 'publish' | 'menus' | 'stats' | 'settings';
 
@@ -99,6 +100,13 @@ export default function AdminPage() {
       if (r.ok) { setAuthed(true); sessionStorage.setItem('yummio-admin-pass', p); loadStats(p); }
       else setAuthErr('סיסמה שגויה');
     } catch { setAuthErr('שגיאת חיבור'); }
+  }
+
+  async function markSent(slug: string) {
+    try {
+      await fetch('/api/sent', { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-admin-pass': pass }, body: JSON.stringify({ slug }) });
+      loadStats();
+    } catch {}
   }
 
   async function loadStats(p = pass) {
@@ -348,12 +356,14 @@ export default function AdminPage() {
             <span className="stat-chip">👁 {m.views}</span>
             <span className="stat-chip">🔗 {m.clicks}</span>
             <span className="stat-chip">CTR {m.ctr}%</span>
+            {!!m.sends && <span className="stat-chip">🔁 {m.sends}{m.lastSent ? ` · ${m.lastSent}` : ''}</span>}
           </div>
         </div>
         <div className="menu-row-actions">
           <a className="admin-btn ghost sm" href={`/menu/${m.slug}`} target="_blank">פתח ↗</a>
           {withActions && <button className="admin-btn ghost sm" onClick={() => loadMenu(m.slug, false)}>שכפל</button>}
           {withActions && <button className="admin-btn ghost sm" onClick={() => loadMenu(m.slug, true)}>עריכה</button>}
+          {withActions && <button className="admin-btn ghost sm" onClick={() => markSent(m.slug)}>סמן כנשלח</button>}
         </div>
       </div>
     );
