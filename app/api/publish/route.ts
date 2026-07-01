@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { putFile } from '@/lib/github';
 import { kvSet } from '@/lib/kv';
+import { BP } from '@/lib/base';
 
 export const dynamic = 'force-dynamic';
 
@@ -71,5 +72,5 @@ export async function POST(req: Request) {
     }));
   }
 
-  return NextResponse.json({ ok: true, slug, url: `/menu/${slug}`, codes });
+  return NextResponse.json({ ok: true, slug, url: `${BP}/menu/${slug}`, codes });
 }
