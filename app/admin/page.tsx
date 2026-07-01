@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useState } from 'react';
+import { BP } from '@/lib/base';
 
 type Recipe = {
   url: string; image: string; title: string; desc: string; time: string; level: string;
@@ -96,7 +97,7 @@ export default function AdminPage() {
   async function verify(p: string) {
     setAuthErr('');
     try {
-      const r = await fetch('/api/check', { method: 'POST', headers: { 'x-admin-pass': p } });
+      const r = await fetch(BP + '/api/check', { method: 'POST', headers: { 'x-admin-pass': p } });
       if (r.ok) { setAuthed(true); sessionStorage.setItem('yummio-admin-pass', p); loadStats(p); }
       else setAuthErr('סיסמה שגויה');
     } catch { setAuthErr('שגיאת חיבור'); }
@@ -104,7 +105,7 @@ export default function AdminPage() {
 
   async function markSent(slug: string) {
     try {
-      await fetch('/api/sent', { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-admin-pass': pass }, body: JSON.stringify({ slug }) });
+      await fetch(BP + '/api/sent', { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-admin-pass': pass }, body: JSON.stringify({ slug }) });
       loadStats();
     } catch {}
   }
@@ -112,7 +113,7 @@ export default function AdminPage() {
   async function loadStats(p = pass) {
     setStatsBusy(true);
     try {
-      const r = await fetch('/api/stats', { method: 'POST', headers: { 'x-admin-pass': p } });
+      const r = await fetch(BP + '/api/stats', { method: 'POST', headers: { 'x-admin-pass': p } });
       const d = await r.json();
       setStats(d.menus || []);
     } catch { setStats([]); }
@@ -140,7 +141,7 @@ export default function AdminPage() {
   async function loadMenu(slug: string, keepSlug: boolean) {
     setBusy('טוען תפריט...');
     try {
-      const r = await fetch(`/api/menu?slug=${encodeURIComponent(slug)}`, { headers: { 'x-admin-pass': pass } });
+      const r = await fetch(`${BP}/api/menu?slug=${encodeURIComponent(slug)}`, { headers: { 'x-admin-pass': pass } });
       const d = await r.json(); if (!d.menu) throw new Error('not found');
       const m = d.menu;
       setTitle(m.title || ''); setIntro(m.intro || ''); setImage(m.image || '');
@@ -157,7 +158,7 @@ export default function AdminPage() {
     const url = recipes[i].url.trim(); if (!url) return;
     setBusy(`מושך מתכון ${i + 1}...`);
     try {
-      const r = await fetch(`/api/scrape?url=${encodeURIComponent(url)}`, { headers: { 'x-admin-pass': pass } });
+      const r = await fetch(`${BP}/api/scrape?url=${encodeURIComponent(url)}`, { headers: { 'x-admin-pass': pass } });
       const d = await r.json(); if (d.error) throw new Error(d.error);
       setRecipes((rs) => rs.map((rec, idx) => idx === i ? {
         ...rec,
@@ -201,7 +202,7 @@ export default function AdminPage() {
   async function publish() {
     setErr(''); setResult(null); setCodes([]); setBusy('מפרסם...');
     try {
-      const r = await fetch('/api/publish', {
+      const r = await fetch(BP + '/api/publish', {
         method: 'POST', headers: { 'Content-Type': 'application/json', 'x-admin-pass': pass },
         body: JSON.stringify({ date, message, title, intro, image, tracked, recipes }),
       });
@@ -216,7 +217,8 @@ export default function AdminPage() {
 
   // ---- WhatsApp message ----
   function buildWaMessage(): string {
-    const origin = typeof window !== 'undefined' ? window.location.origin : '';
+    // origin כולל את נתיב הבסיס (למשל https://yummio.co.il/menus) כדי שכל קישורי הוואטסאפ יעבדו
+    const origin = (typeof window !== 'undefined' ? window.location.origin : '') + BP;
     const slug = `${date}-${message}`;
     const sameSlug = !!result && result.slug === slug;
     const list = recipes.filter((r) => r.title && r.url);
@@ -279,7 +281,7 @@ export default function AdminPage() {
         </nav>
         <div className="studio-nav-foot">
           <button className="nav-item" onClick={toggleTheme}><span className="nav-ico">{theme === 'dark' ? '☀️' : '🌙'}</span> {theme === 'dark' ? 'מצב בהיר' : 'מצב כהה'}</button>
-          <a className="nav-item" href="/" target="_blank"><span className="nav-ico">↗</span> צפייה באתר</a>
+          <a className="nav-item" href={`${BP}/`} target="_blank"><span className="nav-ico">↗</span> צפייה באתר</a>
         </div>
       </aside>
 
@@ -360,7 +362,7 @@ export default function AdminPage() {
           </div>
         </div>
         <div className="menu-row-actions">
-          <a className="admin-btn ghost sm" href={`/menu/${m.slug}`} target="_blank">פתח ↗</a>
+          <a className="admin-btn ghost sm" href={`${BP}/menu/${m.slug}`} target="_blank">פתח ↗</a>
           {withActions && <button className="admin-btn ghost sm" onClick={() => loadMenu(m.slug, false)}>שכפל</button>}
           {withActions && <button className="admin-btn ghost sm" onClick={() => loadMenu(m.slug, true)}>עריכה</button>}
           {withActions && <button className="admin-btn ghost sm" onClick={() => markSent(m.slug)}>סמן כנשלח</button>}
@@ -488,7 +490,7 @@ export default function AdminPage() {
           <div className="stat-menu" key={m.slug}>
             <div className="stat-menu-head">
               <div><strong>{m.title}</strong> <span className="admin-hint">· {m.dateLabel} · הודעה {m.message}</span></div>
-              <a className="admin-link" href={`/menu/${m.slug}`} target="_blank">פתח ↗</a>
+              <a className="admin-link" href={`${BP}/menu/${m.slug}`} target="_blank">פתח ↗</a>
             </div>
             <div className="stat-chips">
               <span className="stat-chip">👁 צפיות: <b>{m.views}</b></span>
@@ -516,7 +518,7 @@ export default function AdminPage() {
       <>
         <div className="admin-card">
           <h2 className="admin-h2">מצב המערכת</h2>
-          <div className="set-row"><span>אתר חי</span><a className="admin-link" href="/" target="_blank">yummio.vercel.app ↗</a></div>
+          <div className="set-row"><span>אתר חי</span><a className="admin-link" href={`${BP}/`} target="_blank">yummio.co.il/menus ↗</a></div>
           <div className="set-row"><span>מאגר קוד</span><a className="admin-link" href="https://github.com/sfiras/yummio" target="_blank">GitHub ↗</a></div>
           <div className="set-row"><span>פריסה</span><a className="admin-link" href="https://vercel.com/firassomreh-6317s-projects/yummio" target="_blank">Vercel ↗</a></div>
           <div className="set-row"><span>אנליטיקס</span><a className="admin-link" href="https://analytics.google.com" target="_blank">GA4 ↗</a></div>
