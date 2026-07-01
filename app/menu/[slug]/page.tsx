@@ -6,6 +6,7 @@ import RecipeCard from '@/components/RecipeCard';
 import AdSlot from '@/components/AdSlot';
 import ViewBeacon from '@/components/ViewBeacon';
 import AnchorAd from '@/components/AnchorAd';
+import { BP } from '@/lib/base';
 
 const AD_TOP = process.env.NEXT_PUBLIC_ADSENSE_SLOT_TOP;
 const AD_INFEED = process.env.NEXT_PUBLIC_ADSENSE_SLOT_INFEED;
@@ -30,7 +31,7 @@ export function generateMetadata({ params }: { params: { slug: string } }): Meta
   return {
     title,
     description,
-    openGraph: { title, description, images, type: 'article', url: `/menu/${menu.slug}` },
+    openGraph: { title, description, images, type: 'article', url: `${process.env.NEXT_PUBLIC_SITE_URL || 'https://yummio.co.il/menus'}/menu/${menu.slug}` },
     twitter: { card: 'summary_large_image', title, description, images },
   };
 }
@@ -69,7 +70,7 @@ export default function MenuPage({ params }: { params: { slug: string } }) {
               {sameDay.map((m) => (
                 <a
                   key={m.slug}
-                  href={`/menu/${m.slug}`}
+                  href={`${BP}/menu/${m.slug}`}
                   className={`msg-chip${m.slug === menu.slug ? ' active' : ''}`}
                 >
                   📩 {m.title || `הודעה ${m.message}`}
