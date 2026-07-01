@@ -1,5 +1,6 @@
 'use client';
 import { useEffect } from 'react';
+import { BP } from '@/lib/base';
 
 // סופר צפייה אחת לכל גלישה (פעם אחת ל-session) בעמוד התפריט
 export default function ViewBeacon({ slug }: { slug: string }) {
@@ -11,7 +12,7 @@ export default function ViewBeacon({ slug }: { slug: string }) {
     } catch {
       /* ignore */
     }
-    fetch('/api/view?m=' + encodeURIComponent(slug)).catch(() => {});
+    fetch(BP + '/api/view?m=' + encodeURIComponent(slug)).catch(() => {});
   }, [slug]);
   return null;
 }

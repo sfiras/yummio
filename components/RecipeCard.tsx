@@ -1,5 +1,6 @@
 import type { Recipe } from '@/lib/menus';
 import SaveButton from './SaveButton';
+import { BP } from '@/lib/base';
 
 export default function RecipeCard({
   recipe,
@@ -15,7 +16,7 @@ export default function RecipeCard({
   priority?: boolean; // true למתכון הראשון (משפר LCP)
 }) {
   // במצב מעקב: דרך /go לספירת קליק. אחרת: קישור מקורי ישיר.
-  const href = menuSlug && tracked ? `/go/${menuSlug}/${number - 1}/page` : recipe.url;
+  const href = menuSlug && tracked ? `${BP}/go/${menuSlug}/${number - 1}/page` : recipe.url;
   return (
     <article className="card">
       <a className="thumb" href={href} target="_blank" rel="noopener">

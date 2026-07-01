@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useState } from 'react';
+import { BP } from '@/lib/base';
 
 export default function Header() {
   const [theme, setTheme] = useState<'light' | 'dark'>('light');
@@ -19,7 +20,7 @@ export default function Header() {
   return (
     <header className="site">
       <div className="wrap bar">
-        <a className="logo" href="/"><span className="dot">🍳</span> Yumm<b>io</b></a>
+        <a className="logo" href={`${BP}/`}><span className="dot">🍳</span> Yumm<b>io</b></a>
         <div className="head-right">
           <a className="header-cta" href="#recipes">המתכונים של היום</a>
           <button className="theme-btn" onClick={toggle} aria-label="מצב כהה/בהיר">
