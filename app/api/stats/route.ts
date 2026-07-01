@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getAllMenus, formatHebrewDate } from '@/lib/menus';
-import { kvMGet } from '@/lib/kv';
+import { kvMGet, kvGetStr } from '@/lib/kv';
 
 export const dynamic = 'force-dynamic';
 
@@ -13,15 +13,17 @@ export async function POST(req: Request) {
   const menus = getAllMenus();
   const keys: string[] = [];
   for (const m of menus) {
-    keys.push(`v:${m.slug}`);
+    keys.push(`v:${m.slug}`, `sc:${m.slug}`);
     m.recipes.forEach((_, i) => keys.push(`c:${m.slug}:${i}:wa`, `c:${m.slug}:${i}:page`));
   }
 
   const vals = await kvMGet(keys);
+  const lasts = await Promise.all(menus.map((m) => kvGetStr(`sl:${m.slug}`)));
 
   let p = 0;
-  const out = menus.map((m) => {
+  const out = menus.map((m, mi) => {
     const views = vals[p++] || 0;
+    const sends = vals[p++] || 0;
     const recipes = m.recipes.map((r, i) => {
       const wa = vals[p++] || 0;
       const page = vals[p++] || 0;
@@ -40,6 +42,8 @@ export async function POST(req: Request) {
       pageTotal,
       clicks,
       ctr: views ? Math.round((clicks / views) * 100) : 0,
+      sends,
+      lastSent: lasts[mi],
       recipes,
     };
   });
