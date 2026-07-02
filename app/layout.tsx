@@ -13,10 +13,8 @@ const heebo = Heebo({
   display: 'swap',
 });
 
-const ADSENSE = process.env.NEXT_PUBLIC_ADSENSE_CLIENT;
-
 export const metadata: Metadata = {
-  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || 'https://yummio.example'),
+  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || 'https://yummio.co.il/menus'),
   title: 'Yummio · מתכונים מהירים וטעימים',
   description: 'אוסף מתכונים חדש בכל יום — פשוט, מהיר וטעים. לחצו, בשלו, תיהנו.',
   openGraph: { title: 'Yummio · המתכונים של היום', description: 'אוסף מתכונים חדש בכל יום — פשוט, מהיר וטעים.', type: 'website' },
@@ -38,14 +36,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <script dangerouslySetInnerHTML={{ __html: themeScript }} />
       </head>
       <body>
-        {ADSENSE && (
-          <Script
-            async
-            strategy="afterInteractive"
-            crossOrigin="anonymous"
-            src={`https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${ADSENSE}`}
-          />
-        )}
+        {/* סקריפט AdSense נטען רק בעמודי /menu (ראו app/menu/layout.tsx) — לא בלוח הניהול ולא בדף הבית */}
         {GA_ID && (
           <>
             <Script async src={`https://www.googletagmanager.com/gtag/js?id=${GA_ID}`} strategy="afterInteractive" />
