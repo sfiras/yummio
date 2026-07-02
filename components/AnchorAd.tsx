@@ -17,6 +17,13 @@ export default function AnchorAd() {
     }
   }, [client, slot]);
 
+  // שומרים מקום בתחתית הדף כדי שהעוגן הדביק לא יכסה את התוכן/הפוטר; משחררים כשסוגרים
+  useEffect(() => {
+    const show = !!client && !!slot && !closed;
+    document.body.style.paddingBottom = show ? '76px' : '';
+    return () => { document.body.style.paddingBottom = ''; };
+  }, [client, slot, closed]);
+
   if (!client || !slot || closed) return null;
 
   return (
