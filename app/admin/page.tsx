@@ -176,7 +176,7 @@ export default function AdminPage() {
   }
 
   // מפענח הודעת וואטסאפ: שם (עם כוכביות/אימוג'י) + תיאור + קישור
-  function parseBulk() {
+  async function parseBulk() {
     const lines = bulk.split('\n');
     const rows: Recipe[] = [];
     let groupLink = '';
@@ -204,9 +204,30 @@ export default function AdminPage() {
       rows.push(r);
     }
     if (groupLink) { setWaGroup(groupLink); saveTpl({ group: groupLink }); }
-    if (rows.length) { setRecipes(rows); setBulk(''); setErr(''); }
-    else if (groupLink) { setBulk(''); setErr('זוהה רק קישור קבוצה (נשמר). לא נמצאו מתכונים.'); }
-    else setErr('לא נמצאו קישורים בטקסט');
+    if (!rows.length) {
+      setErr(groupLink ? 'זוהה רק קישור קבוצה (נשמר). לא נמצאו מתכונים.' : 'לא נמצאו קישורים בטקסט');
+      return;
+    }
+    setRecipes(rows); setBulk(''); setErr('');
+
+    // משיכה אוטומטית של תמונות מהאתר (עוקב אחרי bit.ly). שומרים כותרת/תיאור מההודעה.
+    for (let i = 0; i < rows.length; i++) {
+      const url = rows[i].url.trim(); if (!url) continue;
+      setBusy(`מושך תמונה ${i + 1}/${rows.length}...`);
+      try {
+        const r = await fetch(`${BP}/api/scrape?url=${encodeURIComponent(url)}`, { headers: { 'x-admin-pass': pass } });
+        const d = await r.json(); if (d.error) continue;
+        setRecipes((rs) => rs.map((rec, idx) => idx === i ? {
+          ...rec,
+          url: tracked ? (d.finalUrl || rec.url) : rec.url,
+          image: d.image || rec.image,
+          author: d.author || rec.author,
+          title: rec.title || d.title,
+          desc: rec.desc || d.desc,
+        } : rec));
+      } catch { /* ממשיכים למתכון הבא */ }
+    }
+    setBusy('');
   }
 
   async function publish() {
@@ -445,10 +466,10 @@ export default function AdminPage() {
           <h2 className="admin-h2">הדבקה מהירה מהודעת וואטסאפ</h2>
           <textarea className="admin-input" rows={4} placeholder="הדביקו את כל טקסט ההודעה (גם הודעה ישנה עם bit.ly — נזהה ונמיר אוטומטית)..." value={bulk} onChange={(e) => setBulk(e.target.value)} />
           <div className="admin-actions">
-            <button className="admin-btn ghost" onClick={parseBulk}>חלץ מתכונים מהטקסט</button>
-            <button className="admin-btn ghost" onClick={fetchAll}>משוך הכול מהאתר (תמונה/כותרת/בעל מתכון)</button>
+            <button className="admin-btn ghost" onClick={parseBulk}>חלץ מתכונים + תמונות</button>
+            <button className="admin-btn ghost" onClick={fetchAll}>משוך כותרות מהאתר (מחליף טקסט)</button>
           </div>
-          <p className="admin-hint" style={{ marginTop: 8 }}>טיפ: "חלץ" שומר את הטקסט מההודעה; "משוך מהאתר" מחליף לגרסת האתר (אפשר להחזיר לכל מתכון בנפרד).</p>
+          <p className="admin-hint" style={{ marginTop: 8 }}>"חלץ מתכונים + תמונות" מפענח את ההודעה ומושך אוטומטית תמונה לכל מתכון (עוקב אחרי bit.ly), ושומר את הכותרות/תיאורים מההודעה. "משוך כותרות מהאתר" מחליף לגרסת הכותרת/תיאור מהאתר.</p>
         </section>
 
         <section className="admin-card">
