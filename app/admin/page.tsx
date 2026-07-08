@@ -67,6 +67,7 @@ export default function AdminPage() {
   const [codes, setCodes] = useState<string[]>([]);
 
   const [stats, setStats] = useState<StatMenu[] | null>(null);
+  const [trend, setTrend] = useState<{ date: string; clicks: number; views: number }[]>([]);
   const [statsBusy, setStatsBusy] = useState(false);
   const [menuQuery, setMenuQuery] = useState('');
 
@@ -118,6 +119,7 @@ export default function AdminPage() {
       const r = await fetch(BP + '/api/stats', { method: 'POST', headers: { 'x-admin-pass': p } });
       const d = await r.json();
       setStats(d.menus || []);
+      setTrend(d.trend || []);
     } catch { setStats([]); }
     finally { setStatsBusy(false); }
   }
@@ -574,9 +576,38 @@ export default function AdminPage() {
     return (
       <>
         <div className="admin-h2-row">
-          <h2 className="admin-h2">סטטיסטיקות לפי הודעה</h2>
+          <h2 className="admin-h2">סטטיסטיקות</h2>
           <button className="admin-btn ghost sm" onClick={() => loadStats()}>רענן</button>
         </div>
+        {trend.length > 0 && (() => {
+          const max = Math.max(1, ...trend.map((t) => Math.max(t.clicks, t.views)));
+          const totalClicks = trend.reduce((s, t) => s + t.clicks, 0);
+          const totalViews = trend.reduce((s, t) => s + t.views, 0);
+          return (
+            <div className="admin-card" style={{ marginBottom: 16 }}>
+              <div className="admin-h2-row">
+                <h2 className="admin-h2">מגמה יומית · 14 ימים</h2>
+                <span className="admin-hint">קליקים <b>{totalClicks}</b> · צפיות <b>{totalViews}</b></span>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'flex-end', gap: 4, marginTop: 12 }}>
+                {trend.map((t) => (
+                  <div key={t.date} title={`${t.date} · קליקים ${t.clicks} · צפיות ${t.views}`} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3 }}>
+                    <div style={{ width: '100%', display: 'flex', alignItems: 'flex-end', justifyContent: 'center', gap: 2, height: 100 }}>
+                      <div style={{ flex: 1, maxWidth: 12, background: 'var(--brand)', borderRadius: '4px 4px 0 0', height: `${Math.round((t.clicks / max) * 100)}%`, minHeight: t.clicks ? 3 : 0 }} />
+                      <div style={{ flex: 1, maxWidth: 12, background: 'var(--line)', borderRadius: '4px 4px 0 0', height: `${Math.round((t.views / max) * 100)}%`, minHeight: t.views ? 3 : 0 }} />
+                    </div>
+                    <span style={{ fontSize: 9, color: 'var(--ink-soft)' }}>{t.date.slice(8)}</span>
+                  </div>
+                ))}
+              </div>
+              <div style={{ display: 'flex', gap: 16, marginTop: 10, fontSize: 12, color: 'var(--ink-soft)' }}>
+                <span><span style={{ display: 'inline-block', width: 10, height: 10, background: 'var(--brand)', borderRadius: 2, marginInlineEnd: 4 }} />קליקים</span>
+                <span><span style={{ display: 'inline-block', width: 10, height: 10, background: 'var(--line)', borderRadius: 2, marginInlineEnd: 4 }} />צפיות</span>
+              </div>
+            </div>
+          );
+        })()}
+        <h2 className="admin-h2" style={{ marginTop: 4 }}>לפי הודעה</h2>
         {statsBusy && <p className="admin-busy">טוען...</p>}
         {!statsBusy && stats && stats.length === 0 && <p className="admin-hint">אין נתונים עדיין.</p>}
         {!statsBusy && stats && stats.map((m) => (
