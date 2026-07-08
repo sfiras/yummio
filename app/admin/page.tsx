@@ -153,6 +153,21 @@ export default function AdminPage() {
     finally { setBusy(''); }
   }
 
+  // מחיקת תפריט לגמרי (מוחק את הקובץ מהמאגר)
+  async function deleteMenu(slug: string) {
+    if (!window.confirm(`למחוק לגמרי את "${slug}"?\nהעמוד יוסר מהאתר. פעולה זו אינה הפיכה.`)) return;
+    setBusy('מוחק תפריט...');
+    try {
+      const r = await fetch(BP + '/api/delete', {
+        method: 'POST', headers: { 'Content-Type': 'application/json', 'x-admin-pass': pass },
+        body: JSON.stringify({ slug }),
+      });
+      const d = await r.json(); if (!r.ok || d.error) throw new Error(d.error || 'failed');
+      setErr(''); await loadStats();
+    } catch (e) { setErr(`מחיקה נכשלה: ${e}`); }
+    finally { setBusy(''); }
+  }
+
   // מושך מהאתר: עוקב אחרי bit.ly (resolve), כותרת נקייה, תיאור, ושם בעל המתכון
   async function fetchMeta(i: number) {
     const url = recipes[i].url.trim(); if (!url) return;
@@ -417,12 +432,15 @@ export default function AdminPage() {
           {withActions && <button className="admin-btn ghost sm" onClick={() => loadMenu(m.slug, false)}>שכפל</button>}
           {withActions && <button className="admin-btn ghost sm" onClick={() => loadMenu(m.slug, true)}>עריכה</button>}
           {withActions && <button className="admin-btn ghost sm" onClick={() => markSent(m.slug)}>סמן כנשלח</button>}
+          {withActions && <button className="admin-btn ghost sm" style={{ color: '#dc2626', borderColor: '#dc2626' }} onClick={() => deleteMenu(m.slug)}>🗑 מחק</button>}
         </div>
       </div>
     );
   }
 
   function renderPublish() {
+    // אם כבר קיים תפריט עם אותו תאריך+הודעה => זהו עדכון לפוסט קיים (הקובץ יידרס)
+    const isUpdate = !!stats?.some((s) => s.slug === `${date}-${message}`);
     return (
       <>
         <section className="admin-card">
@@ -467,9 +485,9 @@ export default function AdminPage() {
           <textarea className="admin-input" rows={4} placeholder="הדביקו את כל טקסט ההודעה (גם הודעה ישנה עם bit.ly — נזהה ונמיר אוטומטית)..." value={bulk} onChange={(e) => setBulk(e.target.value)} />
           <div className="admin-actions">
             <button className="admin-btn ghost" onClick={parseBulk}>חלץ מתכונים + תמונות</button>
-            <button className="admin-btn ghost" onClick={fetchAll}>משוך כותרות מהאתר (מחליף טקסט)</button>
+            <button className="admin-btn ghost" onClick={fetchAll}>משוך הכל מהאתר (תמונה/כותרת/בעל מתכון)</button>
           </div>
-          <p className="admin-hint" style={{ marginTop: 8 }}>"חלץ מתכונים + תמונות" מפענח את ההודעה ומושך אוטומטית תמונה לכל מתכון (עוקב אחרי bit.ly), ושומר את הכותרות/תיאורים מההודעה. "משוך כותרות מהאתר" מחליף לגרסת הכותרת/תיאור מהאתר.</p>
+          <p className="admin-hint" style={{ marginTop: 8 }}>"חלץ מתכונים + תמונות" מפענח את ההודעה ומושך אוטומטית תמונה + שם בעל/ת המתכון לכל מתכון (עוקב אחרי bit.ly), ושומר את הכותרות/תיאורים מההודעה. "משוך הכל מהאתר" מחליף גם את הכותרת/תיאור לגרסת האתר.</p>
         </section>
 
         <section className="admin-card">
@@ -505,7 +523,8 @@ export default function AdminPage() {
               {r.image && <img className="admin-preview" src={r.image} alt="" />}
             </div>
           ))}
-          <button className="admin-btn big publish-inline" onClick={publish} disabled={!!busy}>🚀 פרסם תפריט</button>
+          {isUpdate && <p className="admin-hint" style={{ textAlign: 'center', marginTop: 8, color: 'var(--brand)' }}>♻️ קיים תפריט לתאריך+הודעה האלה — פרסום יעדכן אותו.</p>}
+          <button className="admin-btn big publish-inline" onClick={publish} disabled={!!busy}>{isUpdate ? '♻️ עדכן פוסט' : '🚀 פרסם תפריט'}</button>
           {busy && <p className="admin-busy" style={{ textAlign: 'center', marginTop: 10 }}>{busy}</p>}
           {err && <p className="admin-err" style={{ textAlign: 'center', marginTop: 10 }}>{err}</p>}
           {result && <p className="admin-ok" style={{ textAlign: 'center', marginTop: 10 }}>✅ פורסם! יופיע באתר תוך ~30 שניות: <a href={result.url} target="_blank">{result.url}</a></p>}
