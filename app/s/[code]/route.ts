@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { kvGetStr, kvIncr } from '@/lib/kv';
+import { ilDay } from '@/lib/day';
 
 export const dynamic = 'force-dynamic';
 
@@ -13,7 +14,12 @@ export async function GET(_req: Request, { params }: { params: { code: string } 
   try { d = JSON.parse(raw); } catch { return NextResponse.redirect(site, 302); }
   if (!d.u) return NextResponse.redirect(site, 302);
 
-  await kvIncr(`c:${d.m}:${d.r}:${d.s || 'wa'}`);
+  const day = ilDay();
+  await Promise.all([
+    kvIncr(`c:${d.m}:${d.r}:${d.s || 'wa'}`),
+    kvIncr(`dc:${day}`),
+    kvIncr(`mc:${d.m}:${day}`),
+  ]);
 
   let target = d.u;
   try {
