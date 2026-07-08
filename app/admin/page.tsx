@@ -37,6 +37,21 @@ const NAV: { id: View; label: string; icon: string }[] = [
   { id: 'settings', label: 'הגדרות', icon: '⚙️' },
 ];
 
+// ממיר טקסט וואטסאפ לתצוגה מקדימה: *מודגש*, קישורים, ושמירת שורות
+function waNodes(text: string): React.ReactNode[] {
+  const out: React.ReactNode[] = [];
+  const re = /(\*[^*\n]+\*)|(https?:\/\/[^\s]+)/g;
+  let last = 0; let m: RegExpExecArray | null; let k = 0;
+  while ((m = re.exec(text)) !== null) {
+    if (m.index > last) out.push(text.slice(last, m.index));
+    if (m[1]) out.push(<strong key={k++}>{m[1].slice(1, -1)}</strong>);
+    else if (m[2]) out.push(<a key={k++} href={m[2]} target="_blank" rel="noopener" style={{ color: '#027eb5', wordBreak: 'break-all' }}>{m[2]}</a>);
+    last = m.index + m[0].length;
+  }
+  if (last < text.length) out.push(text.slice(last));
+  return out;
+}
+
 export default function AdminPage() {
   const [pass, setPass] = useState('');
   const [authed, setAuthed] = useState(false);
@@ -379,7 +394,13 @@ export default function AdminPage() {
               <strong style={{ fontSize: 15 }}>📄 הודעת וואטסאפ · {msgModal.title}</strong>
               <button className="admin-btn ghost sm" onClick={() => setMsgModal(null)}>✕</button>
             </div>
-            <textarea className="admin-input" readOnly rows={14} value={msgModal.text || 'אין הודעה שמורה לעמוד זה. (נשמרת אוטומטית כשמדביקים הודעה ומפרסמים)'} onClick={(e) => (e.target as HTMLTextAreaElement).select()} style={{ fontFamily: 'inherit', flex: 1 }} />
+            <div style={{ background: '#efeae2', borderRadius: 14, padding: '14px 12px', overflow: 'auto', flex: 1 }}>
+              {msgModal.text ? (
+                <div style={{ background: '#d9fdd3', color: '#111b21', borderRadius: 12, padding: '8px 10px 6px', maxWidth: '92%', marginInlineStart: 'auto', fontSize: 14.5, lineHeight: 1.55 }}>
+                  <div style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{waNodes(msgModal.text)}</div>
+                </div>
+              ) : <p className="admin-hint">אין הודעה שמורה לעמוד זה. (נשמרת אוטומטית כשמדביקים הודעה ומפרסמים)</p>}
+            </div>
             {msgModal.text && <button className="admin-btn big" onClick={() => { navigator.clipboard?.writeText(msgModal.text).catch(() => {}); }}>📋 העתק</button>}
           </div>
         </div>
@@ -564,9 +585,18 @@ export default function AdminPage() {
             <label className="full">קישור הקבוצה<input className="admin-input" placeholder="https://chat.whatsapp.com/..." value={waGroup} onChange={(e) => { setWaGroup(e.target.value); saveTpl({ group: e.target.value }); }} /></label>
             <label className="full">סיום<textarea className="admin-input" rows={2} value={waClosing} onChange={(e) => { setWaClosing(e.target.value); saveTpl({ closing: e.target.value }); }} /></label>
           </div>
-          <h3 style={{ fontSize: 14, fontWeight: 800, margin: '14px 0 6px' }}>הטקסט המלא להעתקה:</h3>
-          <textarea className="admin-input" rows={14} readOnly value={buildWaMessage()} onClick={(e) => (e.target as HTMLTextAreaElement).select()} style={{ fontFamily: 'inherit' }} />
+          <h3 style={{ fontSize: 14, fontWeight: 800, margin: '14px 0 6px' }}>תצוגה מקדימה (כמו בוואטסאפ):</h3>
+          <div style={{ background: '#efeae2', borderRadius: 14, padding: '14px 12px' }}>
+            <div style={{ background: '#d9fdd3', color: '#111b21', borderRadius: 12, padding: '8px 10px 6px', maxWidth: '92%', marginInlineStart: 'auto', boxShadow: '0 1px 1px rgba(0,0,0,.12)', fontSize: 14.5, lineHeight: 1.55 }}>
+              <div style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{waNodes(buildWaMessage())}</div>
+              <div style={{ textAlign: 'end', fontSize: 11, color: '#667781', marginTop: 3 }}>{new Date().toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })} ✓✓</div>
+            </div>
+          </div>
           <button className="admin-btn big" style={{ marginTop: 10, width: '100%' }} onClick={copyMessage}>{copied ? '✓ הועתק!' : '📋 העתק את כל ההודעה'}</button>
+          <details style={{ marginTop: 8 }}>
+            <summary className="admin-hint" style={{ cursor: 'pointer' }}>טקסט גולמי (להעתקה ידנית)</summary>
+            <textarea className="admin-input" rows={10} readOnly value={buildWaMessage()} onClick={(e) => (e.target as HTMLTextAreaElement).select()} style={{ fontFamily: 'inherit', marginTop: 6 }} />
+          </details>
         </section>
       </>
     );
