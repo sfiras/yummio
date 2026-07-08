@@ -38,6 +38,7 @@ export async function POST(req: Request) {
       dateLabel: formatHebrewDate(m.date),
       message: m.message,
       draft: m.draft === true,
+      waText: m.waText || '',
       views,
       waTotal,
       pageTotal,
