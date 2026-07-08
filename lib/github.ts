@@ -45,3 +45,28 @@ export async function putFile(path: string, content: string, message: string) {
   }
   return res.json();
 }
+
+/** מוחק קובץ מהמאגר (משמש למחיקת תפריט). מפעיל פריסה אוטומטית ב-Vercel */
+export async function deleteFile(path: string, message: string) {
+  const token = process.env.GITHUB_TOKEN;
+  if (!token) throw new Error('missing GITHUB_TOKEN');
+
+  const url = `${API}/repos/${repo()}/contents/${path}`;
+
+  // צריך את ה-sha של הקובץ כדי למחוק
+  const head = await fetch(`${url}?ref=main`, { headers: authHeaders(token), cache: 'no-store' });
+  if (head.status === 404) return { ok: true, missing: true };
+  if (!head.ok) throw new Error(`GitHub read failed: ${head.status}`);
+  const { sha } = await head.json();
+
+  const res = await fetch(url, {
+    method: 'DELETE',
+    headers: { ...authHeaders(token), 'Content-Type': 'application/json' },
+    body: JSON.stringify({ message, sha, branch: 'main' }),
+  });
+
+  if (!res.ok) {
+    throw new Error(`GitHub delete failed: ${res.status} ${await res.text()}`);
+  }
+  return res.json();
+}
