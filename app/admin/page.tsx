@@ -8,7 +8,7 @@ type Recipe = {
 };
 type StatRecipe = { i: number; title: string; wa: number; page: number; total: number };
 type StatMenu = {
-  slug: string; title: string; dateLabel: string; message: number; draft?: boolean;
+  slug: string; title: string; dateLabel: string; message: number; draft?: boolean; waText?: string;
   views: number; waTotal: number; pageTotal: number; clicks: number; ctr: number;
   sends?: number; lastSent?: string | null; recipes: StatRecipe[];
 };
@@ -52,6 +52,8 @@ export default function AdminPage() {
   const [image, setImage] = useState('');
   const [recipes, setRecipes] = useState<Recipe[]>([empty()]);
   const [bulk, setBulk] = useState('');
+  const [waText, setWaText] = useState(''); // הודעת הוואטסאפ ששויכה לעמוד (מה ששלחת)
+  const [msgModal, setMsgModal] = useState<{ title: string; text: string } | null>(null); // חלון "הצג הודעה"
   const [busy, setBusy] = useState('');
   const [result, setResult] = useState<{ url: string; slug: string; draft?: boolean } | null>(null);
   const [err, setErr] = useState('');
@@ -134,7 +136,7 @@ export default function AdminPage() {
   }
   function resetComposer() {
     setTitle(''); setIntro(''); setImage(''); setRecipes([empty()]);
-    setDate(todayISO()); setMessage(1); setBulk(''); setResult(null); setErr('');
+    setDate(todayISO()); setMessage(1); setBulk(''); setWaText(''); setResult(null); setErr('');
   }
   function goPublishNew() { resetComposer(); setView('publish'); setNavOpen(false); }
 
@@ -146,7 +148,7 @@ export default function AdminPage() {
       const m = d.menu;
       setTitle(m.title || ''); setIntro(m.intro || ''); setImage(m.image || '');
       setRecipes(m.recipes?.length ? m.recipes.map(norm) : [empty()]);
-      setTracked(m.tracked !== false); setCodes([]);
+      setTracked(m.tracked !== false); setCodes([]); setWaText(m.waText || '');
       if (keepSlug) { setDate(m.date); setMessage(m.message); } else { setDate(todayISO()); setMessage(1); }
       setResult(null); setErr(''); setBulk(''); setView('publish'); setNavOpen(false);
     } catch (e) { setErr(String(e)); }
@@ -223,6 +225,7 @@ export default function AdminPage() {
       setErr(groupLink ? 'זוהה רק קישור קבוצה (נשמר). לא נמצאו מתכונים.' : 'לא נמצאו קישורים בטקסט');
       return;
     }
+    if (bulk.trim()) setWaText(bulk.trim()); // שומרים את ההודעה ששויכה לעמוד
     setRecipes(rows); setBulk(''); setErr('');
 
     // משיכה אוטומטית של תמונות מהאתר (עוקב אחרי bit.ly). שומרים כותרת/תיאור מההודעה.
@@ -250,7 +253,7 @@ export default function AdminPage() {
     try {
       const r = await fetch(BP + '/api/publish', {
         method: 'POST', headers: { 'Content-Type': 'application/json', 'x-admin-pass': pass },
-        body: JSON.stringify({ date, message, title, intro, image, tracked, draft: asDraft, recipes }),
+        body: JSON.stringify({ date, message, title, intro, image, tracked, draft: asDraft, waText, recipes }),
       });
       const d = await r.json();
       if (!r.ok || d.error) throw new Error(d.error || 'failed');
@@ -367,6 +370,18 @@ export default function AdminPage() {
           {view === 'settings' && renderSettings()}
         </div>
       </div>
+      {msgModal && (
+        <div onClick={() => setMsgModal(null)} style={{ position: 'fixed', inset: 0, zIndex: 200, background: 'rgba(0,0,0,.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
+          <div onClick={(e) => e.stopPropagation()} style={{ background: 'var(--card)', color: 'var(--ink)', borderRadius: 16, padding: 18, width: 'min(560px,100%)', maxHeight: '86vh', display: 'flex', flexDirection: 'column', gap: 10, boxShadow: 'var(--shadow-hover)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <strong style={{ fontSize: 15 }}>📄 הודעת וואטסאפ · {msgModal.title}</strong>
+              <button className="admin-btn ghost sm" onClick={() => setMsgModal(null)}>✕</button>
+            </div>
+            <textarea className="admin-input" readOnly rows={14} value={msgModal.text || 'אין הודעה שמורה לעמוד זה. (נשמרת אוטומטית כשמדביקים הודעה ומפרסמים)'} onClick={(e) => (e.target as HTMLTextAreaElement).select()} style={{ fontFamily: 'inherit', flex: 1 }} />
+            {msgModal.text && <button className="admin-btn big" onClick={() => { navigator.clipboard?.writeText(msgModal.text).catch(() => {}); }}>📋 העתק</button>}
+          </div>
+        </div>
+      )}
     </div>
   );
 
@@ -429,6 +444,7 @@ export default function AdminPage() {
         </div>
         <div className="menu-row-actions">
           <a className="admin-btn ghost sm" href={`${BP}/menu/${m.slug}`} target="_blank">פתח ↗</a>
+          <button className="admin-btn ghost sm" onClick={() => setMsgModal({ title: m.title, text: m.waText || '' })}>📄 הודעת וואטסאפ</button>
           {withActions && <button className="admin-btn ghost sm" onClick={() => loadMenu(m.slug, false)}>שכפל</button>}
           {withActions && <button className="admin-btn ghost sm" onClick={() => loadMenu(m.slug, true)}>עריכה</button>}
           {withActions && <button className="admin-btn ghost sm" onClick={() => markSent(m.slug)}>סמן כנשלח</button>}
@@ -488,6 +504,10 @@ export default function AdminPage() {
             <button className="admin-btn ghost" onClick={fetchAll}>משוך הכל מהאתר (תמונה/כותרת/בעל מתכון)</button>
           </div>
           <p className="admin-hint" style={{ marginTop: 8 }}>"חלץ מתכונים + תמונות" מפענח את ההודעה ומושך אוטומטית תמונה + שם בעל/ת המתכון לכל מתכון (עוקב אחרי bit.ly), ושומר את הכותרות/תיאורים מההודעה. "משוך הכל מהאתר" מחליף גם את הכותרת/תיאור לגרסת האתר.</p>
+          <label className="full" style={{ marginTop: 12, display: 'block' }}>
+            <strong style={{ fontSize: 14 }}>📄 הודעת הוואטסאפ ששלחת (נשמרת עם העמוד, ותוצג בכפתור בכל תפריט)</strong>
+            <textarea className="admin-input" rows={4} style={{ marginTop: 6 }} placeholder="נשמר אוטומטית מההדבקה למעלה — אפשר גם להדביק/לערוך כאן את הנוסח המדויק ששלחת." value={waText} onChange={(e) => setWaText(e.target.value)} />
+          </label>
         </section>
 
         <section className="admin-card">
