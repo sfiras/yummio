@@ -95,7 +95,7 @@ export default function AdminPage() {
   const [linkUrl, setLinkUrl] = useState('');
   const [linkLabel, setLinkLabel] = useState('');
   const [lastShort, setLastShort] = useState('');
-  const [links, setLinks] = useState<{ code: string; u: string; t: string; ts: number; short: string; wa: number; page: number; total: number }[]>([]);
+  const [links, setLinks] = useState<{ code: string; u: string; t: string; ts: number; short: string; wa: number; page: number; other: number; total: number }[]>([]);
 
   useEffect(() => {
     const t = (document.documentElement.getAttribute('data-theme') as 'light' | 'dark') || 'light';
@@ -778,6 +778,7 @@ export default function AdminPage() {
               <div className="menu-row-chips" style={{ marginTop: 6 }}>
                 <span className="stat-chip">📱 וואטסאפ: <b>{l.wa}</b></span>
                 <span className="stat-chip">🖥 עמוד: <b>{l.page}</b></span>
+                <span className="stat-chip">🌐 אחר: <b>{l.other}</b></span>
                 <span className="stat-chip">🔗 סה״כ: <b>{l.total}</b></span>
               </div>
             </div>
