@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getMenu } from '@/lib/menus';
 import { kvIncr } from '@/lib/kv';
+import { ilDay } from '@/lib/day';
 
 export const dynamic = 'force-dynamic';
 
@@ -17,8 +18,13 @@ export async function GET(
   if (!recipe || !recipe.url) return NextResponse.redirect(site, 302);
 
   const src = params.s === 'wa' ? 'wa' : 'page';
-  // סופרים את הקליק (מחכים כדי לוודא שנכתב לפני הסגירה)
-  await kvIncr(`c:${params.menu}:${idx}:${src}`);
+  // סופרים את הקליק (מחכים כדי לוודא שנכתב לפני הסגירה) + מונה יומי (לגרף מגמה)
+  const day = ilDay();
+  await Promise.all([
+    kvIncr(`c:${params.menu}:${idx}:${src}`),
+    kvIncr(`dc:${day}`),
+    kvIncr(`mc:${params.menu}:${day}`),
+  ]);
 
   let target = recipe.url;
   try {
