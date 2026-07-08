@@ -1,6 +1,8 @@
 'use client';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { BP } from '@/lib/base';
+
+const DRAFT_KEY = 'yummio-composer-draft'; // שמירה אוטומטית של הטיוטה בדפדפן
 
 type Recipe = {
   url: string; image: string; title: string; desc: string; time: string; level: string;
@@ -69,6 +71,8 @@ export default function AdminPage() {
   const [bulk, setBulk] = useState('');
   const [waText, setWaText] = useState(''); // הודעת הוואטסאפ ששויכה לעמוד (מה ששלחת)
   const [msgModal, setMsgModal] = useState<{ title: string; text: string } | null>(null); // חלון "הצג הודעה"
+  const [hasDraft, setHasDraft] = useState(false); // האם קיימת טיוטה שמורה בדפדפן
+  const skipSave = useRef(true); // מדלגים על השמירה הראשונה (mount) כדי לא לדרוס טיוטה קיימת
   const [busy, setBusy] = useState('');
   const [result, setResult] = useState<{ url: string; slug: string; draft?: boolean } | null>(null);
   const [err, setErr] = useState('');
@@ -98,7 +102,41 @@ export default function AdminPage() {
     } catch {}
     const saved = sessionStorage.getItem('yummio-admin-pass');
     if (saved) { setPass(saved); verify(saved); }
+    try { setHasDraft(!!localStorage.getItem(DRAFT_KEY)); } catch {}
   }, []);
+
+  // שמירה אוטומטית של הטיוטה בדפדפן (מדלגים על ה-mount הראשון כדי לא לדרוס טיוטה קיימת)
+  useEffect(() => {
+    if (skipSave.current) { skipSave.current = false; return; }
+    try {
+      localStorage.setItem(DRAFT_KEY, JSON.stringify({ date, message, title, intro, image, recipes, waText, tracked }));
+      setHasDraft(true);
+    } catch {}
+  }, [date, message, title, intro, image, recipes, waText, tracked]);
+
+  // סגירת חלון ההודעה עם Escape
+  useEffect(() => {
+    if (!msgModal) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setMsgModal(null); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [msgModal]);
+
+  function restoreDraft() {
+    try {
+      const d = JSON.parse(localStorage.getItem(DRAFT_KEY) || 'null');
+      if (!d) return;
+      if (d.date) setDate(d.date); if (d.message) setMessage(d.message);
+      setTitle(d.title || ''); setIntro(d.intro || ''); setImage(d.image || '');
+      setRecipes(Array.isArray(d.recipes) && d.recipes.length ? d.recipes.map(norm) : [empty()]);
+      setWaText(d.waText || ''); if (typeof d.tracked === 'boolean') setTracked(d.tracked);
+      setResult(null); setErr(''); setView('publish'); setNavOpen(false);
+    } catch {}
+  }
+  function clearDraft() {
+    try { localStorage.removeItem(DRAFT_KEY); } catch {}
+    setHasDraft(false);
+  }
 
   function saveTpl(next: Partial<{ opening: string; notes: string; group: string; closing: string }>) {
     const tpl = { opening: waOpening, notes: waNotes, group: waGroup, closing: waClosing, ...next };
@@ -388,7 +426,7 @@ export default function AdminPage() {
         </div>
       </div>
       {msgModal && (
-        <div onClick={() => setMsgModal(null)} style={{ position: 'fixed', inset: 0, zIndex: 200, background: 'rgba(0,0,0,.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
+        <div onClick={() => setMsgModal(null)} role="dialog" aria-modal="true" aria-label="הודעת וואטסאפ" style={{ position: 'fixed', inset: 0, zIndex: 200, background: 'rgba(0,0,0,.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
           <div onClick={(e) => e.stopPropagation()} style={{ background: 'var(--card)', color: 'var(--ink)', borderRadius: 16, padding: 18, width: 'min(560px,100%)', maxHeight: '86vh', display: 'flex', flexDirection: 'column', gap: 10, boxShadow: 'var(--shadow-hover)' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
               <strong style={{ fontSize: 15 }}>📄 הודעת וואטסאפ · {msgModal.title}</strong>
@@ -430,6 +468,12 @@ export default function AdminPage() {
           <button className="admin-btn big" style={{ flex: 1 }} onClick={goPublishNew}>✍️ פרסם תפריט חדש</button>
           <button className="admin-btn ghost big" style={{ flex: 1 }} onClick={() => setView('menus')}>🗂️ כל התפריטים</button>
         </div>
+        {hasDraft && (
+          <div className="admin-inline" style={{ gap: 10, marginTop: 10 }}>
+            <button className="admin-btn ghost sm" onClick={restoreDraft}>↩︎ שחזר טיוטה אחרונה (נשמר אוטומטית)</button>
+            <button className="admin-btn ghost sm" onClick={clearDraft}>נקה</button>
+          </div>
+        )}
         <div className="admin-h2-row" style={{ marginTop: 22 }}>
           <h2 className="admin-h2">תפריטים אחרונים</h2>
           <button className="admin-btn ghost sm" onClick={() => loadStats()}>רענן</button>
