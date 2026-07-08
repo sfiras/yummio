@@ -40,6 +40,9 @@ export async function putFile(path: string, content: string, message: string) {
     }),
   });
 
+  if (res.status === 401 || res.status === 403) {
+    throw new Error('הטוקן של GitHub פג או אינו תקין — יש לחדש את GITHUB_TOKEN בהגדרות Vercel.');
+  }
   if (!res.ok) {
     throw new Error(`GitHub publish failed: ${res.status} ${await res.text()}`);
   }
@@ -56,6 +59,9 @@ export async function deleteFile(path: string, message: string) {
   // צריך את ה-sha של הקובץ כדי למחוק
   const head = await fetch(`${url}?ref=main`, { headers: authHeaders(token), cache: 'no-store' });
   if (head.status === 404) return { ok: true, missing: true };
+  if (head.status === 401 || head.status === 403) {
+    throw new Error('הטוקן של GitHub פג או אינו תקין — יש לחדש את GITHUB_TOKEN בהגדרות Vercel.');
+  }
   if (!head.ok) throw new Error(`GitHub read failed: ${head.status}`);
   const { sha } = await head.json();
 
