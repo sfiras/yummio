@@ -44,7 +44,7 @@ export async function putFile(path: string, content: string, message: string) {
     throw new Error('הטוקן של GitHub פג או אינו תקין — יש לחדש את GITHUB_TOKEN בהגדרות Vercel.');
   }
   if (!res.ok) {
-    throw new Error(`GitHub publish failed: ${res.status} ${await res.text()}`);
+    throw new Error(`הפרסום ל-GitHub נכשל (${res.status}). נסו שוב בעוד רגע.`);
   }
   return res.json();
 }
@@ -62,7 +62,7 @@ export async function deleteFile(path: string, message: string) {
   if (head.status === 401 || head.status === 403) {
     throw new Error('הטוקן של GitHub פג או אינו תקין — יש לחדש את GITHUB_TOKEN בהגדרות Vercel.');
   }
-  if (!head.ok) throw new Error(`GitHub read failed: ${head.status}`);
+  if (!head.ok) throw new Error(`קריאת הקובץ מ-GitHub נכשלה (${head.status}).`);
   const { sha } = await head.json();
 
   const res = await fetch(url, {
@@ -72,7 +72,7 @@ export async function deleteFile(path: string, message: string) {
   });
 
   if (!res.ok) {
-    throw new Error(`GitHub delete failed: ${res.status} ${await res.text()}`);
+    throw new Error(`המחיקה מ-GitHub נכשלה (${res.status}).`);
   }
   return res.json();
 }
