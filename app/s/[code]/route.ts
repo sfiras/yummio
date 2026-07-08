@@ -1,11 +1,12 @@
 import { NextResponse } from 'next/server';
 import { kvGetStr, kvIncr } from '@/lib/kv';
 import { ilDay } from '@/lib/day';
+import { isBot } from '@/lib/bots';
 
 export const dynamic = 'force-dynamic';
 
 // קישור קצר: /s/<code> -> סופר קליק וואטסאפ ומפנה למתכון (עם UTM)
-export async function GET(_req: Request, { params }: { params: { code: string } }) {
+export async function GET(req: Request, { params }: { params: { code: string } }) {
   const site = process.env.NEXT_PUBLIC_SITE_URL || 'https://yummio.vercel.app';
   const raw = await kvGetStr(`s:${params.code}`);
   if (!raw) return NextResponse.redirect(site, 302);
@@ -14,12 +15,14 @@ export async function GET(_req: Request, { params }: { params: { code: string } 
   try { d = JSON.parse(raw); } catch { return NextResponse.redirect(site, 302); }
   if (!d.u) return NextResponse.redirect(site, 302);
 
-  const day = ilDay();
-  await Promise.all([
-    kvIncr(`c:${d.m}:${d.r}:${d.s || 'wa'}`),
-    kvIncr(`dc:${day}`),
-    kvIncr(`mc:${d.m}:${day}`),
-  ]);
+  if (!isBot(req.headers.get('user-agent'))) {
+    const day = ilDay();
+    await Promise.all([
+      kvIncr(`c:${d.m}:${d.r}:${d.s || 'wa'}`),
+      kvIncr(`dc:${day}`),
+      kvIncr(`mc:${d.m}:${day}`),
+    ]);
+  }
 
   let target = d.u;
   try {
