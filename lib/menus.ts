@@ -19,6 +19,7 @@ export type Menu = {
   intro?: string;    // טקסט מבוא שמופיע מתחת לכותרת בעמוד
   image?: string;    // תמונת תצוגה (og:image) לתצוגה מקדימה בוואטסאפ
   tracked?: boolean; // false = שמירת קישורים מקוריים ללא מעקב (ברירת מחדל: true)
+  draft?: boolean;   // true = טיוטה: נגישה בקישור לתצוגה מקדימה, אך noindex ולא מופיעה בבית/ניווט
   recipes: Recipe[];
 };
 
@@ -44,13 +45,14 @@ export function getMenu(slug: string): Menu | undefined {
 }
 
 export function getLatestMenu(): Menu | undefined {
-  return getAllMenus()[0];
+  // טיוטות לא נחשבות "אחרון" (דף הבית)
+  return getAllMenus().find((m) => !m.draft);
 }
 
-/** כל ההודעות (תפריטים) של אותו יום, ממוין לפי מספר ההודעה */
+/** כל ההודעות (תפריטים) של אותו יום, ממוין לפי מספר ההודעה. טיוטות לא מופיעות בניווט. */
 export function getMenusForDate(date: string): Menu[] {
   return getAllMenus()
-    .filter((m) => m.date === date)
+    .filter((m) => m.date === date && !m.draft)
     .sort((a, b) => a.message - b.message);
 }
 
