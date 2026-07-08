@@ -45,6 +45,7 @@ export default function MenuPage({ params }: { params: { slug: string } }) {
   if (!menu) notFound();
 
   const sameDay = getMenusForDate(menu.date); // כל ההודעות של אותו יום
+  const showAds = !menu.draft; // אין מודעות בטיוטה (מדיניות AdSense: לא בעמודי noindex/תצוגה מקדימה)
 
   return (
     <>
@@ -87,8 +88,8 @@ export default function MenuPage({ params }: { params: { slug: string } }) {
           )}
         </section>
 
-        {/* מודעת ראש העמוד */}
-        <AdSlot slot={AD_TOP} minHeight={100} className="ad-leaderboard" />
+        {/* מודעת ראש העמוד (לא בטיוטה) */}
+        {showAds && <AdSlot slot={AD_TOP} minHeight={100} className="ad-leaderboard" />}
 
         <section id="recipes">
           <div className="section-head">
@@ -102,6 +103,7 @@ export default function MenuPage({ params }: { params: { slug: string } }) {
                 key={i}
                 index={i}
                 isLast={i === menu.recipes.length - 1}
+                showAds={showAds}
               >
                 <RecipeCard recipe={recipe} number={i + 1} menuSlug={menu.slug} tracked={menu.tracked !== false} priority={i === 0} />
               </ReactFragmentWithAd>
@@ -112,7 +114,7 @@ export default function MenuPage({ params }: { params: { slug: string } }) {
         </section>
       </main>
       <Footer />
-      <AnchorAd />
+      {showAds && <AnchorAd />}
     </>
   );
 }
@@ -121,13 +123,15 @@ export default function MenuPage({ params }: { params: { slug: string } }) {
 function ReactFragmentWithAd({
   index,
   isLast,
+  showAds,
   children,
 }: {
   index: number;
   isLast: boolean;
+  showAds: boolean;
   children: React.ReactNode;
 }) {
-  const showAd = (index + 1) % AD_EVERY === 0 && !isLast;
+  const showAd = showAds && (index + 1) % AD_EVERY === 0 && !isLast;
   return (
     <>
       {children}
