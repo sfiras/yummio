@@ -15,15 +15,16 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
   }
 
-  let body: { date?: string; message?: number | string; title?: string; intro?: string; image?: string; tracked?: boolean; recipes?: RecipeIn[] };
+  let body: { date?: string; message?: number | string; title?: string; intro?: string; image?: string; tracked?: boolean; draft?: boolean; recipes?: RecipeIn[] };
   try {
     body = await req.json();
   } catch {
     return NextResponse.json({ error: 'bad json' }, { status: 400 });
   }
 
-  const { date, message, title, intro, image, tracked, recipes } = body;
+  const { date, message, title, intro, image, tracked, draft, recipes } = body;
   const isTracked = tracked !== false;
+  const isDraft = draft === true;
   if (!date || !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
     return NextResponse.json({ error: 'תאריך לא תקין (YYYY-MM-DD)' }, { status: 400 });
   }
@@ -51,13 +52,13 @@ export async function POST(req: Request) {
   const slug = `${date}-${msgNum}`;
   const json =
     JSON.stringify(
-      { date, message: msgNum, title: (title || '').trim(), intro: (intro || '').trim(), image: (image || '').trim(), tracked: isTracked, recipes: clean },
+      { date, message: msgNum, title: (title || '').trim(), intro: (intro || '').trim(), image: (image || '').trim(), tracked: isTracked, draft: isDraft, recipes: clean },
       null,
       2
     ) + '\n';
 
   try {
-    await putFile(`data/menus/${slug}.json`, json, `admin: publish ${slug}`);
+    await putFile(`data/menus/${slug}.json`, json, `admin: ${isDraft ? 'draft' : 'publish'} ${slug}`);
   } catch (e) {
     return NextResponse.json({ error: String(e) }, { status: 500 });
   }
@@ -72,5 +73,5 @@ export async function POST(req: Request) {
     }));
   }
 
-  return NextResponse.json({ ok: true, slug, url: `${BP}/menu/${slug}`, codes });
+  return NextResponse.json({ ok: true, slug, url: `${BP}/menu/${slug}`, codes, draft: isDraft });
 }
