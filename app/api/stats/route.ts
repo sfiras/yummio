@@ -37,6 +37,7 @@ export async function POST(req: Request) {
       title: m.title || m.slug,
       dateLabel: formatHebrewDate(m.date),
       message: m.message,
+      draft: m.draft === true,
       views,
       waTotal,
       pageTotal,
