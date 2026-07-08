@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getAllMenus, formatHebrewDate } from '@/lib/menus';
 import { kvMGet, kvGetStr } from '@/lib/kv';
+import { lastDays } from '@/lib/day';
 
 export const dynamic = 'force-dynamic';
 
@@ -50,5 +51,15 @@ export async function POST(req: Request) {
     };
   });
 
-  return NextResponse.json({ menus: out, kv: vals.some((v) => v > 0) });
+  // מגמה יומית ל-14 הימים האחרונים (קליקים + צפיות, כל האתר)
+  const days = lastDays(14);
+  const trendKeys = [...days.map((d) => `dc:${d}`), ...days.map((d) => `dv:${d}`)];
+  const tv = await kvMGet(trendKeys);
+  const trend = days.map((d, i) => ({
+    date: d,
+    clicks: tv[i] || 0,
+    views: tv[days.length + i] || 0,
+  }));
+
+  return NextResponse.json({ menus: out, trend, kv: vals.some((v) => v > 0) });
 }
