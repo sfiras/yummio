@@ -31,6 +31,8 @@ export function generateMetadata({ params }: { params: { slug: string } }): Meta
   return {
     title,
     description,
+    // טיוטה: לא לאינדוקס במנועי חיפוש
+    robots: menu.draft ? { index: false, follow: false } : undefined,
     openGraph: { title, description, images, type: 'article', url: `${process.env.NEXT_PUBLIC_SITE_URL || 'https://yummio.co.il/menus'}/menu/${menu.slug}` },
     twitter: { card: 'summary_large_image', title, description, images },
   };
@@ -49,6 +51,11 @@ export default function MenuPage({ params }: { params: { slug: string } }) {
       <Header />
       <ViewBeacon slug={menu.slug} />
       <main className="wrap">
+        {menu.draft && (
+          <div style={{ margin: '10px 0', padding: '10px 14px', borderRadius: 12, background: '#fef3c7', color: '#92400e', fontWeight: 700, textAlign: 'center', border: '1px solid #fcd34d' }}>
+            🚧 טיוטה — העמוד עדיין לא פורסם (לא מופיע בבית ולא באינדוקס). לפרסום: לוח הניהול ← עדכן/פרסם.
+          </div>
+        )}
         <section className="hero">
           <span className="pill">
             <span className="live" /> עודכן · {formatHebrewDate(menu.date)}
