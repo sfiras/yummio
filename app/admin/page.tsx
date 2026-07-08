@@ -8,7 +8,7 @@ type Recipe = {
 };
 type StatRecipe = { i: number; title: string; wa: number; page: number; total: number };
 type StatMenu = {
-  slug: string; title: string; dateLabel: string; message: number;
+  slug: string; title: string; dateLabel: string; message: number; draft?: boolean;
   views: number; waTotal: number; pageTotal: number; clicks: number; ctr: number;
   sends?: number; lastSent?: string | null; recipes: StatRecipe[];
 };
@@ -53,7 +53,7 @@ export default function AdminPage() {
   const [recipes, setRecipes] = useState<Recipe[]>([empty()]);
   const [bulk, setBulk] = useState('');
   const [busy, setBusy] = useState('');
-  const [result, setResult] = useState<{ url: string; slug: string } | null>(null);
+  const [result, setResult] = useState<{ url: string; slug: string; draft?: boolean } | null>(null);
   const [err, setErr] = useState('');
 
   // WhatsApp message template
@@ -245,16 +245,16 @@ export default function AdminPage() {
     setBusy('');
   }
 
-  async function publish() {
-    setErr(''); setResult(null); setCodes([]); setBusy('מפרסם...');
+  async function publish(asDraft = false) {
+    setErr(''); setResult(null); setCodes([]); setBusy(asDraft ? 'שומר טיוטה...' : 'מפרסם...');
     try {
       const r = await fetch(BP + '/api/publish', {
         method: 'POST', headers: { 'Content-Type': 'application/json', 'x-admin-pass': pass },
-        body: JSON.stringify({ date, message, title, intro, image, tracked, recipes }),
+        body: JSON.stringify({ date, message, title, intro, image, tracked, draft: asDraft, recipes }),
       });
       const d = await r.json();
       if (!r.ok || d.error) throw new Error(d.error || 'failed');
-      setResult({ url: d.url, slug: d.slug });
+      setResult({ url: d.url, slug: d.slug, draft: !!d.draft });
       setCodes(d.codes || []);
       loadStats();
     } catch (e) { setErr(String(e)); }
@@ -419,7 +419,7 @@ export default function AdminPage() {
     return (
       <div className="menu-row" key={m.slug}>
         <div className="menu-row-main">
-          <div className="menu-row-title"><strong>{m.title}</strong> <span className="admin-hint">· {m.dateLabel} · הודעה {m.message}</span></div>
+          <div className="menu-row-title"><strong>{m.title}</strong>{m.draft && <span style={{ marginInlineStart: 6, padding: '1px 8px', borderRadius: 8, background: '#fef3c7', color: '#92400e', fontSize: 12, fontWeight: 800 }}>טיוטה</span>} <span className="admin-hint">· {m.dateLabel} · הודעה {m.message}</span></div>
           <div className="menu-row-chips">
             <span className="stat-chip">👁 {m.views}</span>
             <span className="stat-chip">🔗 {m.clicks}</span>
@@ -523,11 +523,14 @@ export default function AdminPage() {
               {r.image && <img className="admin-preview" src={r.image} alt="" />}
             </div>
           ))}
-          {isUpdate && <p className="admin-hint" style={{ textAlign: 'center', marginTop: 8, color: 'var(--brand)' }}>♻️ קיים תפריט לתאריך+הודעה האלה — פרסום יעדכן אותו.</p>}
-          <button className="admin-btn big publish-inline" onClick={publish} disabled={!!busy}>{isUpdate ? '♻️ עדכן פוסט' : '🚀 פרסם תפריט'}</button>
+          {isUpdate && <p className="admin-hint" style={{ textAlign: 'center', marginTop: 8, color: 'var(--brand)' }}>♻️ קיים תפריט לתאריך+הודעה האלה — פרסום/עדכון יחליף אותו.</p>}
+          <div className="admin-inline" style={{ gap: 10 }}>
+            <button className="admin-btn ghost big" style={{ flex: 1 }} onClick={() => publish(true)} disabled={!!busy}>💾 שמור טיוטה (תצוגה מקדימה)</button>
+            <button className="admin-btn big publish-inline" style={{ flex: 1 }} onClick={() => publish(false)} disabled={!!busy}>{isUpdate ? '♻️ פרסם / עדכן live' : '🚀 פרסם live'}</button>
+          </div>
           {busy && <p className="admin-busy" style={{ textAlign: 'center', marginTop: 10 }}>{busy}</p>}
           {err && <p className="admin-err" style={{ textAlign: 'center', marginTop: 10 }}>{err}</p>}
-          {result && <p className="admin-ok" style={{ textAlign: 'center', marginTop: 10 }}>✅ פורסם! יופיע באתר תוך ~30 שניות: <a href={result.url} target="_blank">{result.url}</a></p>}
+          {result && <p className="admin-ok" style={{ textAlign: 'center', marginTop: 10 }}>{result.draft ? '💾 נשמר כטיוטה (~30 שניות). תצוגה מקדימה: ' : '✅ פורסם! יופיע באתר תוך ~30 שניות: '}<a href={result.url} target="_blank">{result.url}</a></p>}
         </section>
 
         <section className="admin-card" style={{ borderColor: 'var(--brand)' }}>
