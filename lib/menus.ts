@@ -20,6 +20,7 @@ export type Menu = {
   image?: string;    // תמונת תצוגה (og:image) לתצוגה מקדימה בוואטסאפ
   tracked?: boolean; // false = שמירת קישורים מקוריים ללא מעקב (ברירת מחדל: true)
   draft?: boolean;   // true = טיוטה: נגישה בקישור לתצוגה מקדימה, אך noindex ולא מופיעה בבית/ניווט
+  waText?: string;   // הודעת הוואטסאפ ששויכה לעמוד (מוצגת בכפתור בלוח הניהול)
   recipes: Recipe[];
 };
 
