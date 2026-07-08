@@ -14,7 +14,7 @@ type StatMenu = {
   views: number; waTotal: number; pageTotal: number; clicks: number; ctr: number;
   sends?: number; lastSent?: string | null; recipes: StatRecipe[];
 };
-type View = 'overview' | 'publish' | 'menus' | 'stats' | 'settings';
+type View = 'overview' | 'publish' | 'menus' | 'stats' | 'links' | 'settings';
 
 const empty = (): Recipe => ({ url: '', image: '', title: '', desc: '', time: '', level: '', author: '', msgTitle: '', msgDesc: '' });
 const norm = (r: Partial<Recipe>): Recipe => ({
@@ -36,6 +36,7 @@ const NAV: { id: View; label: string; icon: string }[] = [
   { id: 'publish', label: 'פרסום', icon: '✍️' },
   { id: 'menus', label: 'תפריטים', icon: '🗂️' },
   { id: 'stats', label: 'סטטיסטיקות', icon: '📊' },
+  { id: 'links', label: 'קיצור קישורים', icon: '🔗' },
   { id: 'settings', label: 'הגדרות', icon: '⚙️' },
 ];
 
@@ -90,6 +91,12 @@ export default function AdminPage() {
   const [statsBusy, setStatsBusy] = useState(false);
   const [menuQuery, setMenuQuery] = useState('');
 
+  // מקצר קישורים
+  const [linkUrl, setLinkUrl] = useState('');
+  const [linkLabel, setLinkLabel] = useState('');
+  const [lastShort, setLastShort] = useState('');
+  const [links, setLinks] = useState<{ code: string; u: string; t: string; ts: number; short: string; wa: number; page: number; total: number }[]>([]);
+
   useEffect(() => {
     const t = (document.documentElement.getAttribute('data-theme') as 'light' | 'dark') || 'light';
     setTheme(t);
@@ -113,6 +120,9 @@ export default function AdminPage() {
       setHasDraft(true);
     } catch {}
   }, [date, message, title, intro, image, recipes, waText, tracked]);
+
+  // טעינת רשימת הקישורים המקוצרים כשנכנסים למסך
+  useEffect(() => { if (authed && view === 'links') loadLinks(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [authed, view]);
 
   // סגירת חלון ההודעה עם Escape
   useEffect(() => {
@@ -175,6 +185,30 @@ export default function AdminPage() {
       setTrend(d.trend || []);
     } catch { setStats([]); }
     finally { setStatsBusy(false); }
+  }
+
+  async function loadLinks() {
+    try {
+      const r = await fetch(BP + '/api/links', { method: 'POST', headers: { 'x-admin-pass': pass } });
+      const d = await r.json();
+      setLinks(d.links || []);
+    } catch { setLinks([]); }
+  }
+  async function shortenLink() {
+    const url = linkUrl.trim();
+    if (!url) { setErr('הדביקו קישור.'); return; }
+    setBusy('מקצר קישור...'); setLastShort('');
+    try {
+      const r = await fetch(BP + '/api/shorten-link', {
+        method: 'POST', headers: { 'Content-Type': 'application/json', 'x-admin-pass': pass },
+        body: JSON.stringify({ url, label: linkLabel }),
+      });
+      const d = await r.json();
+      if (!r.ok || d.error) throw new Error(d.error || 'failed');
+      setLastShort(d.short); setLinkUrl(''); setLinkLabel(''); setErr('');
+      await loadLinks();
+    } catch (e) { setErr(String(e)); }
+    finally { setBusy(''); }
   }
 
   function update(i: number, field: keyof Recipe, val: string) {
@@ -422,6 +456,7 @@ export default function AdminPage() {
           {view === 'publish' && renderPublish()}
           {view === 'menus' && renderMenus()}
           {view === 'stats' && renderStats()}
+          {view === 'links' && renderLinks()}
           {view === 'settings' && renderSettings()}
         </div>
       </div>
@@ -704,6 +739,51 @@ export default function AdminPage() {
                   <span>{r.i + 1}</span><span className="stat-title">{r.title}</span><span>{r.wa}</span><span>{r.page}</span><span><b>{r.total}</b></span>
                 </div>
               ))}
+            </div>
+          </div>
+        ))}
+      </>
+    );
+  }
+
+  function renderLinks() {
+    return (
+      <>
+        <section className="admin-card">
+          <h2 className="admin-h2">🔗 קצר קישור חדש</h2>
+          <p className="admin-hint" style={{ marginBottom: 10 }}>חלופה ל-bit.ly — קישור קצר משלכם עם ספירת קליקים (וואטסאפ / עמוד / סה״כ). מתאים לכל הודעה: ספר, הצטרפות לקבוצה, מבצע.</p>
+          <label className="full" style={{ display: 'block' }}>הקישור המלא<input className="admin-input" placeholder="https://..." value={linkUrl} onChange={(e) => setLinkUrl(e.target.value)} /></label>
+          <label className="full" style={{ display: 'block', marginTop: 8 }}>תווית (אופציונלי)<input className="admin-input" placeholder="למשל: מכירת הספר" value={linkLabel} onChange={(e) => setLinkLabel(e.target.value)} /></label>
+          <button className="admin-btn big" style={{ marginTop: 10, width: '100%' }} onClick={shortenLink} disabled={!!busy}>✂️ קצר וצור קישור מעקב</button>
+          {lastShort && (
+            <div className="admin-ok" style={{ marginTop: 10, display: 'flex', gap: 8, alignItems: 'center', justifyContent: 'center', flexWrap: 'wrap' }}>
+              <a href={lastShort} target="_blank">{lastShort}</a>
+              <button className="admin-btn ghost sm" onClick={() => navigator.clipboard?.writeText(lastShort).catch(() => {})}>📋 העתק</button>
+            </div>
+          )}
+          {busy && <p className="admin-busy" style={{ textAlign: 'center', marginTop: 8 }}>{busy}</p>}
+          {err && <p className="admin-err" style={{ textAlign: 'center', marginTop: 8 }}>{err}</p>}
+        </section>
+
+        <div className="admin-h2-row" style={{ marginTop: 18 }}>
+          <h2 className="admin-h2">הקישורים שלי ({links.length})</h2>
+          <button className="admin-btn ghost sm" onClick={loadLinks}>רענן</button>
+        </div>
+        {links.length === 0 && <p className="admin-hint">עדיין אין קישורים מקוצרים.</p>}
+        {links.map((l) => (
+          <div className="menu-row" key={l.code}>
+            <div className="menu-row-main">
+              <div className="menu-row-title"><strong>{l.t || l.short}</strong></div>
+              <div className="admin-hint" style={{ wordBreak: 'break-all' }}>{l.short} → {l.u}</div>
+              <div className="menu-row-chips" style={{ marginTop: 6 }}>
+                <span className="stat-chip">📱 וואטסאפ: <b>{l.wa}</b></span>
+                <span className="stat-chip">🖥 עמוד: <b>{l.page}</b></span>
+                <span className="stat-chip">🔗 סה״כ: <b>{l.total}</b></span>
+              </div>
+            </div>
+            <div className="menu-row-actions">
+              <button className="admin-btn ghost sm" onClick={() => navigator.clipboard?.writeText(l.short).catch(() => {})}>📋 העתק</button>
+              <a className="admin-btn ghost sm" href={l.short} target="_blank">פתח ↗</a>
             </div>
           </div>
         ))}
