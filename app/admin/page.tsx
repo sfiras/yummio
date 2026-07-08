@@ -179,9 +179,16 @@ export default function AdminPage() {
   function parseBulk() {
     const lines = bulk.split('\n');
     const rows: Recipe[] = [];
+    let groupLink = '';
     for (let k = 0; k < lines.length; k++) {
       const m = lines[k].match(/(https?:\/\/[^\s]+)/);
       if (!m) continue;
+      const url = m[1];
+      // קישור וואטסאפ = הצטרפות/שיתוף קבוצה, לא מתכון
+      if (/chat\.whatsapp\.com|wa\.me|whatsapp\.com\/(channel|invite)/i.test(url)) {
+        if (!groupLink) groupLink = url;
+        continue;
+      }
       const block: string[] = [];
       for (let j = k - 1; j >= 0; j--) {
         const ln = lines[j].trim();
@@ -193,10 +200,13 @@ export default function AdminPage() {
       const desc = block.slice(1).join(' ').replace(/\*/g, '').trim();
       if (!name) name = '(ללא שם)';
       const r = empty();
-      r.url = m[1]; r.title = name; r.desc = desc; r.msgTitle = name; r.msgDesc = desc;
+      r.url = url; r.title = name; r.desc = desc; r.msgTitle = name; r.msgDesc = desc;
       rows.push(r);
     }
-    if (rows.length) { setRecipes(rows); setBulk(''); } else setErr('לא נמצאו קישורים בטקסט');
+    if (groupLink) { setWaGroup(groupLink); saveTpl({ group: groupLink }); }
+    if (rows.length) { setRecipes(rows); setBulk(''); setErr(''); }
+    else if (groupLink) { setBulk(''); setErr('זוהה רק קישור קבוצה (נשמר). לא נמצאו מתכונים.'); }
+    else setErr('לא נמצאו קישורים בטקסט');
   }
 
   async function publish() {
@@ -216,6 +226,26 @@ export default function AdminPage() {
   }
 
   // ---- WhatsApp message ----
+  const [copied, setCopied] = useState(false);
+  async function copyMessage() {
+    const text = buildWaMessage();
+    let ok = false;
+    try {
+      if (navigator.clipboard?.writeText) { await navigator.clipboard.writeText(text); ok = true; }
+    } catch { /* ניפול ל-fallback */ }
+    if (!ok) {
+      try {
+        const ta = document.createElement('textarea');
+        ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
+        document.body.appendChild(ta); ta.focus(); ta.select();
+        ok = document.execCommand('copy');
+        document.body.removeChild(ta);
+      } catch { /* */ }
+    }
+    if (ok) { setCopied(true); setTimeout(() => setCopied(false), 2000); }
+    else setErr('ההעתקה נכשלה — סמנו את הטקסט והעתיקו ידנית.');
+  }
+
   function buildWaMessage(): string {
     // origin כולל את נתיב הבסיס (למשל https://yummio.co.il/menus) כדי שכל קישורי הוואטסאפ יעבדו
     const origin = (typeof window !== 'undefined' ? window.location.origin : '') + BP;
@@ -471,7 +501,7 @@ export default function AdminPage() {
           </div>
           <h3 style={{ fontSize: 14, fontWeight: 800, margin: '14px 0 6px' }}>הטקסט המלא להעתקה:</h3>
           <textarea className="admin-input" rows={14} readOnly value={buildWaMessage()} onClick={(e) => (e.target as HTMLTextAreaElement).select()} style={{ fontFamily: 'inherit' }} />
-          <button className="admin-btn big" style={{ marginTop: 10, width: '100%' }} onClick={() => navigator.clipboard?.writeText(buildWaMessage())}>📋 העתק את כל ההודעה</button>
+          <button className="admin-btn big" style={{ marginTop: 10, width: '100%' }} onClick={copyMessage}>{copied ? '✓ הועתק!' : '📋 העתק את כל ההודעה'}</button>
         </section>
       </>
     );
