@@ -1,0 +1,32 @@
+name: CI
+
+# שער איכות: רץ בכל דחיפה ל-main ובכל Pull Request.
+# אם ה-typecheck או ה-build נכשלים — ה-commit מסומן באדום ולא אמור לעלות לפרודקשן.
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  quality:
+    name: Typecheck & Build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies (clean, from lockfile)
+        run: npm ci
+
+      - name: Typecheck (strict)
+        run: npm run typecheck
+
+      - name: Build
+        run: npm run build
