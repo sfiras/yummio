@@ -60,6 +60,7 @@ export default function AdminPage() {
   const [authed, setAuthed] = useState(false);
   const [authErr, setAuthErr] = useState('');
   const [theme, setTheme] = useState<'light' | 'dark'>('light');
+  const [uiVer, setUiVer] = useState<'v1' | 'v2'>('v1'); // גרסת עיצוב: קלאסי (V1) / חדש (V2)
   const [view, setView] = useState<View>('overview');
   const [navOpen, setNavOpen] = useState(false);
 
@@ -100,6 +101,8 @@ export default function AdminPage() {
   useEffect(() => {
     const t = (document.documentElement.getAttribute('data-theme') as 'light' | 'dark') || 'light';
     setTheme(t);
+    const u = (document.documentElement.getAttribute('data-ui') as 'v1' | 'v2') || 'v1';
+    setUiVer(u);
     try {
       const tpl = JSON.parse(localStorage.getItem('yummio-wa-tpl') || '{}');
       if (tpl.opening !== undefined) setWaOpening(tpl.opening);
@@ -158,6 +161,12 @@ export default function AdminPage() {
     document.documentElement.setAttribute('data-theme', next);
     try { localStorage.setItem('yummio-theme', next); } catch {}
     setTheme(next);
+  }
+  function toggleUi() {
+    const next = uiVer === 'v2' ? 'v1' : 'v2';
+    document.documentElement.setAttribute('data-ui', next);
+    try { localStorage.setItem('yummio-ui', next); } catch {}
+    setUiVer(next);
   }
 
   async function verify(p: string) {
@@ -438,6 +447,7 @@ export default function AdminPage() {
           ))}
         </nav>
         <div className="studio-nav-foot">
+          <button className="nav-item" onClick={toggleUi}><span className="nav-ico">🎨</span> עיצוב: {uiVer === 'v2' ? 'חדש (V2)' : 'קלאסי (V1)'}</button>
           <button className="nav-item" onClick={toggleTheme}><span className="nav-ico">{theme === 'dark' ? '☀️' : '🌙'}</span> {theme === 'dark' ? 'מצב בהיר' : 'מצב כהה'}</button>
           <a className="nav-item" href={`${BP}/`} target="_blank"><span className="nav-ico">↗</span> צפייה באתר</a>
         </div>
