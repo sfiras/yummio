@@ -492,6 +492,58 @@ export default function AdminPage() {
   );
 
   function renderOverview() {
+    if (uiVer === 'v2') {
+      const kpis = [
+        { ic: '👁', label: 'צפיות', val: totals ? totals.views.toLocaleString() : '—', tint: 'var(--brand)' },
+        { ic: '🔗', label: 'קליקים', val: totals ? totals.clicks.toLocaleString() : '—', tint: '#06b6d4' },
+        { ic: '📈', label: 'CTR', val: totals ? totals.ctr + '%' : '—', tint: '#22c55e' },
+        { ic: '🗂️', label: 'תפריטים', val: totals ? String(totals.menus) : '—', tint: '#f59e0b' },
+      ];
+      const tmax = Math.max(1, ...trend.map((t) => Math.max(t.clicks, t.views)));
+      return (
+        <>
+          <div style={{ overflow: 'hidden', borderRadius: 24, padding: '22px', marginBottom: 18, background: 'linear-gradient(120deg, var(--brand), color-mix(in srgb, var(--brand) 55%, var(--brand-2)))', color: '#fff' }}>
+            <div style={{ fontSize: 13, opacity: 0.9, fontWeight: 700 }}>Yummio Studio</div>
+            <div style={{ fontSize: 25, fontWeight: 900, marginTop: 4, letterSpacing: '-0.5px' }}>מה מכינים היום?</div>
+            <div style={{ fontSize: 14, opacity: 0.92, marginTop: 4 }}>הדביקו הודעת וואטסאפ ותפריט נבנה תוך שניות.</div>
+            <button onClick={goPublishNew} style={{ marginTop: 14, background: '#fff', color: 'var(--brand-ink)', border: 'none', borderRadius: 14, padding: '11px 20px', fontWeight: 800, fontSize: 15, cursor: 'pointer' }}>➕ תפריט חדש</button>
+          </div>
+          <div className="kpi-grid">
+            {kpis.map((k) => (
+              <div className="kpi" key={k.label} style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                <div style={{ width: 42, height: 42, borderRadius: 14, display: 'grid', placeItems: 'center', fontSize: 20, background: `color-mix(in srgb, ${k.tint} 16%, transparent)` }}>{k.ic}</div>
+                <div>
+                  <div className="kpi-label">{k.label}</div>
+                  <div className="kpi-val" style={{ fontSize: 24 }}>{k.val}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+          {trend.length > 0 && (
+            <div className="admin-card" style={{ marginTop: 16 }}>
+              <div className="admin-h2-row"><h2 className="admin-h2">מגמה · 14 ימים</h2></div>
+              <div style={{ display: 'flex', alignItems: 'flex-end', gap: 5, height: 72 }}>
+                {trend.map((t) => (
+                  <div key={t.date} title={`${t.date} · ${t.clicks} קליקים`} style={{ flex: 1, background: t.clicks >= tmax ? 'var(--brand)' : 'color-mix(in srgb, var(--brand) 22%, transparent)', borderRadius: 5, height: `${Math.round((t.clicks / tmax) * 100)}%`, minHeight: 3 }} />
+                ))}
+              </div>
+            </div>
+          )}
+          {hasDraft && (
+            <div className="admin-inline" style={{ gap: 10, marginTop: 14 }}>
+              <button className="admin-btn ghost sm" onClick={restoreDraft}>↩︎ שחזר טיוטה אחרונה</button>
+              <button className="admin-btn ghost sm" onClick={clearDraft}>נקה</button>
+            </div>
+          )}
+          <div className="admin-h2-row" style={{ marginTop: 20 }}>
+            <h2 className="admin-h2">תפריטים אחרונים</h2>
+            <button className="admin-btn ghost sm" onClick={() => loadStats()}>רענן</button>
+          </div>
+          {stats && stats.slice(0, 5).map((m) => menuRow(m))}
+          {stats && stats.length === 0 && <p className="admin-hint">אין תפריטים עדיין.</p>}
+        </>
+      );
+    }
     return (
       <>
         <div className="kpi-grid">
