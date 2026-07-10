@@ -247,3 +247,35 @@ textarea.admin-input{resize:vertical;line-height:1.5}
   .studio-nav.open{transform:translateX(0)}
   .hamburger{display:grid;place-items:center}
 }
+
+/* ============ V2 · עיצוב One UI 2026 (שכבה נוספת, מופעל ב-data-ui="v2") ============ */
+/* V1 נשאר בדיוק כמו שהוא. הכל כאן מותנה ב-[data-ui="v2"] בלבד. */
+[data-ui="v2"]{ --radius:28px; }
+[data-ui="v2"][data-theme="light"]{
+  --bg:#EDF1F8; --bg2:#FFFFFF; --card:#FFFFFF; --line:#E5EAF3; --brand-soft:#E9F1FF;
+  --shadow:0 2px 6px rgba(20,40,90,.05), 0 16px 38px rgba(20,40,90,.08);
+  --shadow-hover:0 10px 26px rgba(20,40,90,.12), 0 30px 66px rgba(20,40,90,.16);
+}
+[data-ui="v2"][data-theme="dark"]{
+  --bg:#070A11; --bg2:#121A28; --card:#161E2E; --line:#243049; --brand-soft:#16243F;
+  --shadow:0 2px 8px rgba(0,0,0,.45), 0 18px 44px rgba(0,0,0,.5);
+  --shadow-hover:0 14px 44px rgba(0,0,0,.62);
+}
+[data-ui="v2"] .admin-card{ border-radius:24px; padding:22px; }
+[data-ui="v2"] .menu-row{ border-radius:20px; padding:16px 18px; }
+[data-ui="v2"] .kpi{ border-radius:22px; }
+[data-ui="v2"] .stat-menu,[data-ui="v2"] .admin-recipe{ border-radius:20px; }
+[data-ui="v2"] .admin-input{ background:var(--bg); border-color:transparent; border-radius:15px; padding:13px 15px; }
+[data-ui="v2"] .admin-input:focus{ background:var(--bg2); border-color:var(--brand); box-shadow:0 0 0 3px color-mix(in srgb,var(--brand) 18%,transparent); }
+[data-ui="v2"] .admin-btn{ background:var(--brand); border-radius:16px; padding:13px 20px;
+  box-shadow:0 6px 18px color-mix(in srgb,var(--brand) 28%,transparent); transition:transform .12s ease,filter .15s ease; }
+[data-ui="v2"] .admin-btn:hover{ filter:brightness(1.06); }
+[data-ui="v2"] .admin-btn:active{ transform:scale(.96); }
+[data-ui="v2"] .admin-btn.ghost{ background:var(--brand-soft); color:var(--brand-ink); box-shadow:none; }
+[data-ui="v2"] .admin-btn.sm{ border-radius:12px; padding:9px 14px; }
+[data-ui="v2"] .studio-nav{ border-inline-end:none; }
+[data-ui="v2"] .nav-item{ border-radius:14px; padding:12px 14px; }
+[data-ui="v2"] .nav-item.active{ background:var(--brand); color:#fff; box-shadow:0 6px 16px color-mix(in srgb,var(--brand) 28%,transparent); }
+[data-ui="v2"] .stat-chip{ border-radius:999px; padding:7px 13px; }
+[data-ui="v2"] .studio-content{ padding:26px; }
+[data-ui="v2"] .mode-toggle{ border-radius:14px; }

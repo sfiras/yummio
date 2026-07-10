@@ -25,7 +25,9 @@ const themeScript = `
   var s=localStorage.getItem('yummio-theme');
   var m=s||((function(){var h=parseInt(new Date().toLocaleString('en-US',{timeZone:'Asia/Jerusalem',hour:'2-digit',hour12:false}),10);return (h>=19||h<6)?'dark':'light';})());
   document.documentElement.setAttribute('data-theme',m);
-}catch(e){document.documentElement.setAttribute('data-theme','light');}})();
+  var ui=localStorage.getItem('yummio-ui')||'v1';
+  document.documentElement.setAttribute('data-ui',ui);
+}catch(e){document.documentElement.setAttribute('data-theme','light');document.documentElement.setAttribute('data-ui','v1');}})();
 `;
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
