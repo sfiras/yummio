@@ -74,6 +74,7 @@ export default function AdminPage() {
   const [waText, setWaText] = useState(''); // הודעת הוואטסאפ ששויכה לעמוד (מה ששלחת)
   const [msgModal, setMsgModal] = useState<{ title: string; text: string } | null>(null); // חלון "הצג הודעה"
   const [hasDraft, setHasDraft] = useState(false); // האם קיימת טיוטה שמורה בדפדפן
+  const [editingSlug, setEditingSlug] = useState(''); // אם עורכים תפריט קיים — ה-slug שלו (כדי לא להזהיר על דריסה עצמית)
   const skipSave = useRef(true); // מדלגים על השמירה הראשונה (mount) כדי לא לדרוס טיוטה קיימת
   const [busy, setBusy] = useState('');
   const [result, setResult] = useState<{ url: string; slug: string; draft?: boolean } | null>(null);
@@ -233,7 +234,7 @@ export default function AdminPage() {
     setRecipes((rs) => rs.map((r, idx) => idx === i ? { ...r, title: r.msgTitle || r.title, desc: r.msgDesc || r.desc } : r));
   }
   function resetComposer() {
-    setTitle(''); setIntro(''); setImage(''); setRecipes([empty()]);
+    setTitle(''); setIntro(''); setImage(''); setRecipes([empty()]); setEditingSlug('');
     setDate(todayISO()); setMessage(1); setBulk(''); setWaText(''); setResult(null); setErr('');
   }
   function goPublishNew() { resetComposer(); setView('publish'); setNavOpen(false); }
@@ -247,7 +248,7 @@ export default function AdminPage() {
       setTitle(m.title || ''); setIntro(m.intro || ''); setImage(m.image || '');
       setRecipes(m.recipes?.length ? m.recipes.map(norm) : [empty()]);
       setTracked(m.tracked !== false); setCodes([]); setWaText(m.waText || '');
-      if (keepSlug) { setDate(m.date); setMessage(m.message); } else { setDate(todayISO()); setMessage(1); }
+      if (keepSlug) { setDate(m.date); setMessage(m.message); setEditingSlug(slug); } else { setDate(todayISO()); setMessage(1); setEditingSlug(''); }
       setResult(null); setErr(''); setBulk(''); setView('publish'); setNavOpen(false);
     } catch (e) { setErr(String(e)); }
     finally { setBusy(''); }
@@ -347,6 +348,14 @@ export default function AdminPage() {
   }
 
   async function publish(asDraft = false) {
+    // הגנה מפני דריסה בשוגג: אם כבר קיים תפריט לאותו תאריך+הודעה ולא זה שאנחנו עורכים — מאשרים במפורש
+    const targetSlug = `${date}-${message}`;
+    const collides = !!stats?.some((s) => s.slug === targetSlug);
+    if (collides && targetSlug !== editingSlug) {
+      const existing = stats?.find((s) => s.slug === targetSlug);
+      const ok = window.confirm(`⚠️ כבר קיים תפריט לתאריך ${date} · הודעה ${message}${existing?.title ? ` ("${existing.title}")` : ''}.\nפרסום ידרוס אותו לצמיתות ויאפס את הנתונים שלו.\n\nלהמשיך? (לתפריט חדש — שנו את מספר ההודעה)`);
+      if (!ok) return;
+    }
     setErr(''); setResult(null); setCodes([]); setBusy(asDraft ? 'שומר טיוטה...' : 'מפרסם...');
     try {
       const r = await fetch(BP + '/api/publish', {
@@ -459,7 +468,13 @@ export default function AdminPage() {
             <button className="hamburger" onClick={() => setNavOpen(true)} aria-label="תפריט">☰</button>
             <h1>{sectionTitle}</h1>
           </div>
-          {view !== 'publish' && <button className="admin-btn sm" onClick={goPublishNew}>+ תפריט חדש</button>}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <div title="החלפת עיצוב" style={{ display: 'flex', gap: 2, background: 'var(--bg2)', border: '1px solid var(--line)', borderRadius: 12, padding: 3 }}>
+              <button onClick={() => { if (uiVer !== 'v1') toggleUi(); }} style={{ border: 'none', cursor: 'pointer', fontWeight: 800, fontSize: 13, padding: '6px 12px', borderRadius: 9, background: uiVer === 'v1' ? 'var(--brand)' : 'transparent', color: uiVer === 'v1' ? '#fff' : 'var(--ink-soft)' }}>V1</button>
+              <button onClick={() => { if (uiVer !== 'v2') toggleUi(); }} style={{ border: 'none', cursor: 'pointer', fontWeight: 800, fontSize: 13, padding: '6px 12px', borderRadius: 9, background: uiVer === 'v2' ? 'var(--brand)' : 'transparent', color: uiVer === 'v2' ? '#fff' : 'var(--ink-soft)' }}>V2</button>
+            </div>
+            {view !== 'publish' && <button className="admin-btn sm" onClick={goPublishNew}>+ תפריט חדש</button>}
+          </div>
         </header>
         <div className="studio-content">
           {view === 'overview' && renderOverview()}
