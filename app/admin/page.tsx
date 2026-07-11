@@ -90,6 +90,10 @@ export default function AdminPage() {
 
   const [stats, setStats] = useState<StatMenu[] | null>(null);
   const [trend, setTrend] = useState<{ date: string; clicks: number; views: number }[]>([]);
+  const [analytics, setAnalytics] = useState<{ date: string; clicks: number; views: number }[]>([]);
+  const [range, setRange] = useState<'7' | '30' | '90' | 'thisMonth' | 'lastMonth' | 'custom'>('30');
+  const [cFrom, setCFrom] = useState('');
+  const [cTo, setCTo] = useState('');
   const [statsBusy, setStatsBusy] = useState(false);
   const [menuQuery, setMenuQuery] = useState('');
 
@@ -126,7 +130,7 @@ export default function AdminPage() {
   }, [date, message, title, intro, image, recipes, waText, tracked]);
 
   // טעינת רשימת הקישורים המקוצרים כשנכנסים למסך
-  useEffect(() => { if (authed && view === 'links') loadLinks(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [authed, view]);
+  useEffect(() => { if (authed && view === 'links') loadLinks(); if (authed && view === 'stats') loadAnalytics(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [authed, view]);
 
   // סגירת חלון ההודעה עם Escape
   useEffect(() => {
@@ -203,6 +207,13 @@ export default function AdminPage() {
       const d = await r.json();
       setLinks(d.links || []);
     } catch { setLinks([]); }
+  }
+  async function loadAnalytics() {
+    try {
+      const r = await fetch(BP + '/api/analytics', { method: 'POST', headers: { 'x-admin-pass': pass } });
+      const d = await r.json();
+      setAnalytics(d.series || []);
+    } catch { setAnalytics([]); }
   }
   async function shortenLink() {
     const url = linkUrl.trim();
@@ -765,32 +776,74 @@ export default function AdminPage() {
           <h2 className="admin-h2">סטטיסטיקות</h2>
           <button className="admin-btn ghost sm" onClick={() => loadStats()}>רענן</button>
         </div>
-        {trend.length > 0 && (() => {
-          const max = Math.max(1, ...trend.map((t) => Math.max(t.clicks, t.views)));
-          const totalClicks = trend.reduce((s, t) => s + t.clicks, 0);
-          const totalViews = trend.reduce((s, t) => s + t.views, 0);
+        {(() => {
+          const S = analytics;
+          if (!S.length) return <p className="admin-busy" style={{ marginBottom: 14 }}>...</p>;
+          const today = S[S.length - 1].date;
+          const ym = today.slice(0, 7);
+          const [Y, M] = today.split('-').map(Number);
+          const lm = M === 1 ? `${Y - 1}-12` : `${Y}-${String(M - 1).padStart(2, '0')}`;
+          let from = '', to = today;
+          if (range === '7' || range === '30' || range === '90') { const n = Number(range); from = S[Math.max(0, S.length - n)]?.date || today; }
+          else if (range === 'thisMonth') { from = ym + '-01'; }
+          else if (range === 'lastMonth') { from = lm + '-01'; to = lm + '-31'; }
+          else { from = cFrom || today; to = cTo || today; }
+          const cur = S.filter((s) => s.date >= from && s.date <= to);
+          const cClicks = cur.reduce((a, s) => a + s.clicks, 0);
+          const cViews = cur.reduce((a, s) => a + s.views, 0);
+          const cCtr = cViews ? Math.round((cClicks / cViews) * 100) : 0;
+          const fromIdx = Math.max(0, S.findIndex((s) => s.date >= from));
+          const prev = S.slice(Math.max(0, fromIdx - cur.length), fromIdx);
+          const pClicks = prev.reduce((a, s) => a + s.clicks, 0);
+          const pViews = prev.reduce((a, s) => a + s.views, 0);
+          const dClicks = pClicks ? Math.round(((cClicks - pClicks) / pClicks) * 100) : (cClicks ? 100 : 0);
+          const dViews = pViews ? Math.round(((cViews - pViews) / pViews) * 100) : (cViews ? 100 : 0);
+          const dmax = Math.max(1, ...cur.map((s) => s.clicks));
+          const bm: Record<string, number> = {};
+          S.forEach((s) => { const m = s.date.slice(0, 7); bm[m] = (bm[m] || 0) + s.clicks; });
+          const months = Object.keys(bm).sort().slice(-6);
+          const mmax = Math.max(1, ...months.map((m) => bm[m]));
+          const presets: [typeof range, string][] = [['7', '7 ימים'], ['30', '30 ימים'], ['90', '90 ימים'], ['thisMonth', 'החודש'], ['lastMonth', 'חודש שעבר'], ['custom', 'מותאם']];
+          const delta = (d: number) => <span style={{ fontSize: 12, fontWeight: 800, color: d >= 0 ? '#22c55e' : '#e5484d' }}>{d >= 0 ? '▲' : '▼'} {Math.abs(d)}% מהתקופה הקודמת</span>;
           return (
-            <div className="admin-card" style={{ marginBottom: 16 }}>
-              <div className="admin-h2-row">
-                <h2 className="admin-h2">מגמה יומית · 14 ימים</h2>
-                <span className="admin-hint">קליקים <b>{totalClicks}</b> · צפיות <b>{totalViews}</b></span>
-              </div>
-              <div style={{ display: 'flex', alignItems: 'flex-end', gap: 4, marginTop: 12 }}>
-                {trend.map((t) => (
-                  <div key={t.date} title={`${t.date} · קליקים ${t.clicks} · צפיות ${t.views}`} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3 }}>
-                    <div style={{ width: '100%', display: 'flex', alignItems: 'flex-end', justifyContent: 'center', gap: 2, height: 100 }}>
-                      <div style={{ flex: 1, maxWidth: 12, background: 'var(--brand)', borderRadius: '4px 4px 0 0', height: `${Math.round((t.clicks / max) * 100)}%`, minHeight: t.clicks ? 3 : 0 }} />
-                      <div style={{ flex: 1, maxWidth: 12, background: 'var(--line)', borderRadius: '4px 4px 0 0', height: `${Math.round((t.views / max) * 100)}%`, minHeight: t.views ? 3 : 0 }} />
-                    </div>
-                    <span style={{ fontSize: 9, color: 'var(--ink-soft)' }}>{t.date.slice(8)}</span>
-                  </div>
+            <>
+              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 12 }}>
+                {presets.map(([k, lbl]) => (
+                  <button key={k} onClick={() => setRange(k)} style={{ border: '1px solid var(--line)', background: range === k ? 'var(--brand)' : 'var(--card)', color: range === k ? '#fff' : 'var(--ink-soft)', borderRadius: 999, padding: '7px 13px', fontSize: 13, fontWeight: 800, cursor: 'pointer' }}>{lbl}</button>
                 ))}
               </div>
-              <div style={{ display: 'flex', gap: 16, marginTop: 10, fontSize: 12, color: 'var(--ink-soft)' }}>
-                <span><span style={{ display: 'inline-block', width: 10, height: 10, background: 'var(--brand)', borderRadius: 2, marginInlineEnd: 4 }} />קליקים</span>
-                <span><span style={{ display: 'inline-block', width: 10, height: 10, background: 'var(--line)', borderRadius: 2, marginInlineEnd: 4 }} />צפיות</span>
+              {range === 'custom' && (
+                <div className="admin-inline" style={{ gap: 8, marginBottom: 12 }}>
+                  <label style={{ flex: 1, fontSize: 12, color: 'var(--ink-soft)' }}>מתאריך<input className="admin-input" type="date" value={cFrom} onChange={(e) => setCFrom(e.target.value)} /></label>
+                  <label style={{ flex: 1, fontSize: 12, color: 'var(--ink-soft)' }}>עד תאריך<input className="admin-input" type="date" value={cTo} onChange={(e) => setCTo(e.target.value)} /></label>
+                </div>
+              )}
+              <div className="kpi-grid" style={{ gridTemplateColumns: 'repeat(3,1fr)' }}>
+                <div className="kpi"><div className="kpi-label">🔗 קליקים</div><div className="kpi-val" style={{ fontSize: 24 }}>{cClicks.toLocaleString()}</div>{prev.length > 0 && <div style={{ marginTop: 4 }}>{delta(dClicks)}</div>}</div>
+                <div className="kpi"><div className="kpi-label">👁 צפייות</div><div className="kpi-val" style={{ fontSize: 24 }}>{cViews.toLocaleString()}</div>{prev.length > 0 && <div style={{ marginTop: 4 }}>{delta(dViews)}</div>}</div>
+                <div className="kpi"><div className="kpi-label">📈 CTR</div><div className="kpi-val" style={{ fontSize: 24 }}>{cCtr}%</div></div>
               </div>
-            </div>
+              <div className="admin-card" style={{ marginTop: 14 }}>
+                <div className="admin-h2-row"><h2 className="admin-h2">קליקים לפי יום</h2><span className="admin-hint">{from} ← {to}</span></div>
+                {cur.length ? (
+                  <div style={{ display: 'flex', alignItems: 'flex-end', gap: 3, height: 90 }}>
+                    {cur.map((s) => (<div key={s.date} title={`${s.date} · ${s.clicks}`} style={{ flex: 1, background: 'var(--brand)', borderRadius: '4px 4px 0 0', height: `${Math.round((s.clicks / dmax) * 100)}%`, minHeight: s.clicks ? 3 : 0 }} />))}
+                  </div>
+                ) : <p className="admin-hint">אין נתונים בטווח הזה.</p>}
+              </div>
+              <div className="admin-card" style={{ marginTop: 14, marginBottom: 16 }}>
+                <div className="admin-h2-row"><h2 className="admin-h2">השוואה חודשית</h2><span className="admin-hint">קליקים לחודש</span></div>
+                <div style={{ display: 'flex', alignItems: 'flex-end', gap: 12, height: 120 }}>
+                  {months.map((m) => (
+                    <div key={m} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
+                      <span style={{ fontSize: 12, fontWeight: 800 }}>{bm[m].toLocaleString()}</span>
+                      <div style={{ width: '100%', maxWidth: 46, background: m === ym ? 'var(--brand)' : 'color-mix(in srgb, var(--brand) 35%, transparent)', borderRadius: '6px 6px 0 0', height: `${Math.round((bm[m] / mmax) * 80)}%`, minHeight: bm[m] ? 4 : 0 }} />
+                      <span style={{ fontSize: 11, color: 'var(--ink-soft)' }}>{m.slice(5)}/{m.slice(2, 4)}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </>
           );
         })()}
         <h2 className="admin-h2" style={{ marginTop: 4 }}>לפי הודעה</h2>
