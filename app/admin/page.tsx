@@ -90,7 +90,7 @@ export default function AdminPage() {
 
   const [stats, setStats] = useState<StatMenu[] | null>(null);
   const [trend, setTrend] = useState<{ date: string; clicks: number; views: number }[]>([]);
-  const [analytics, setAnalytics] = useState<{ date: string; clicks: number; views: number }[]>([]);
+  const [analytics, setAnalytics] = useState<{ date: string; clicks: number; views: number }[]>([]); // סדרה יומית ל-180 יום
   const [range, setRange] = useState<'7' | '30' | '90' | 'thisMonth' | 'lastMonth' | 'custom'>('30');
   const [cFrom, setCFrom] = useState('');
   const [cTo, setCTo] = useState('');
@@ -101,7 +101,9 @@ export default function AdminPage() {
   const [linkUrl, setLinkUrl] = useState('');
   const [linkLabel, setLinkLabel] = useState('');
   const [lastShort, setLastShort] = useState('');
-  const [links, setLinks] = useState<{ code: string; u: string; t: string; ts: number; short: string; wa: number; page: number; other: number; total: number }[]>([]);
+  const [lastTi, setLastTi] = useState('');
+  const [lastIm, setLastIm] = useState('');
+  const [links, setLinks] = useState<{ code: string; u: string; t: string; ti: string; im: string; ts: number; short: string; wa: number; page: number; other: number; total: number }[]>([]);
 
   useEffect(() => {
     const t = (document.documentElement.getAttribute('data-theme') as 'light' | 'dark') || 'light';
@@ -226,7 +228,8 @@ export default function AdminPage() {
       });
       const d = await r.json();
       if (!r.ok || d.error) throw new Error(d.error || 'failed');
-      setLastShort(d.short); setLinkUrl(''); setLinkLabel(''); setErr('');
+      setLastShort(d.short); setLastTi(d.ti || ''); setLastIm(d.im || '');
+      setLinkUrl(''); setLinkLabel(''); setErr('');
       await loadLinks();
     } catch (e) { setErr(String(e)); }
     finally { setBusy(''); }
@@ -359,7 +362,7 @@ export default function AdminPage() {
   }
 
   async function publish(asDraft = false) {
-    // הגנה מפני דריסה בשוגג: אם כבר קיים תפריט לאותו תאריך+הודעה ולא זה שאנחנו עורכים — מאשרים במפורש
+    // הגנה מפני דריסה בשוגג: אם כבר קיים תפריט לאותו תאריך+הודעה => זהו עדכון לפוסט קיים (הקובץ יידרס)
     const targetSlug = `${date}-${message}`;
     const collides = !!stats?.some((s) => s.slug === targetSlug);
     if (collides && targetSlug !== editingSlug) {
@@ -623,21 +626,25 @@ export default function AdminPage() {
   function menuRow(m: StatMenu, withActions = false) {
     return (
       <div className="menu-row" key={m.slug}>
-        <div className="menu-row-main">
-          <div className="menu-row-title"><strong>{m.title}</strong>{m.draft && <span style={{ marginInlineStart: 6, padding: '1px 8px', borderRadius: 8, background: '#fef3c7', color: '#92400e', fontSize: 12, fontWeight: 800 }}>טיוטה</span>} <span className="admin-hint">· {m.dateLabel} · הודעה {m.message}</span></div>
-          <div className="menu-row-chips">
-            <span className="stat-chip">👁 {m.views}</span>
-            <span className="stat-chip">🔗 {m.clicks}</span>
-            <span className="stat-chip">CTR {m.ctr}%</span>
-            {!!m.sends && <span className="stat-chip">🔁 {m.sends}{m.lastSent ? ` · ${m.lastSent}` : ''}</span>}
+        <div className="menu-row-top">
+          <div className="menu-row-title">
+            <strong>{m.title}</strong>
+            {m.draft && <span style={{ marginInlineStart: 6, padding: '1px 8px', borderRadius: 8, background: '#fef3c7', color: '#92400e', fontSize: 12, fontWeight: 800 }}>טיוטה</span>}
+            <span className="admin-hint"> · {m.dateLabel} · הודעה {m.message}</span>
+          </div>
+          <div className="menu-kpi-line">
+            <span>👁 {m.views}</span>
+            <span>🔗 {m.clicks}</span>
+            <span>CTR {m.ctr}%</span>
+            {!!m.sends && <span>🔁 {m.sends}{m.lastSent ? ` · ${m.lastSent}` : ''}</span>}
           </div>
         </div>
         <div className="menu-row-actions">
           <a className="admin-btn ghost sm" href={`${BP}/menu/${m.slug}`} target="_blank">פתח ↗</a>
-          <button className="admin-btn ghost sm" onClick={() => setMsgModal({ title: m.title, text: m.waText || '' })}>📄 הודעת וואטסאפ</button>
-          {withActions && <button className="admin-btn ghost sm" onClick={() => loadMenu(m.slug, false)}>שכפל</button>}
+          <button className="admin-btn ghost sm" onClick={() => setMsgModal({ title: m.title, text: m.waText || '' })}>📄 הודעה</button>
           {withActions && <button className="admin-btn ghost sm" onClick={() => loadMenu(m.slug, true)}>עריכה</button>}
-          {withActions && <button className="admin-btn ghost sm" onClick={() => markSent(m.slug)}>סמן כנשלח</button>}
+          {withActions && <button className="admin-btn ghost sm" onClick={() => loadMenu(m.slug, false)}>שכפל</button>}
+          {withActions && <button className="admin-btn ghost sm" onClick={() => markSent(m.slug)}>✔ נשלח</button>}
           {withActions && <button className="admin-btn ghost sm" style={{ color: '#dc2626', borderColor: '#dc2626' }} onClick={() => deleteMenu(m.slug)}>🗑 מחק</button>}
         </div>
       </div>
@@ -654,7 +661,7 @@ export default function AdminPage() {
             <div>
               <strong style={{ fontSize: 15 }}>מצב קישורים</strong>
               <p className="admin-hint" style={{ marginTop: 4 }}>
-                {tracked ? 'קישורים חדשים קצרים עם מעקב (וואטסאפ / עמוד)' : 'שמירת הקישורים המקוריים (bit.ly) — ללא מעקב'}
+                {tracked ? 'קישורים חדשים קצרים עם מעקב (וואטסאפ / עמוד)' : 'שמירת הקישורים המקוריים (bit.ly) — נזהה ונמיר אוטומטית)}
               </p>
             </div>
             <div className="mode-toggle">
@@ -676,7 +683,7 @@ export default function AdminPage() {
             <textarea className="admin-input" rows={2} style={{ marginTop: 6 }} placeholder="טקסט פתיחה קצר ומזמין..." value={intro} onChange={(e) => setIntro(e.target.value)} />
           </label>
           <label style={{ display: 'block', marginTop: 12, fontSize: 13, fontWeight: 700, color: 'var(--ink-soft)' }}>
-            תמונת תצוגה לוואטסאפ (לא חובה — ברירת מחדל: תמונת המתכון הראשון)
+            תמונת תצוגה הוואטסאפ (לא חובה — ברירת מחדל: תמונת המתכון הראשון)
             <div className="admin-inline" style={{ marginTop: 6 }}>
               <input className="admin-input" placeholder="קישור תמונה..." value={image} onChange={(e) => setImage(e.target.value)} />
               <button className="admin-btn sm" type="button" onClick={() => setImage(recipes[0]?.image || '')}>מהמתכון הראשון</button>
@@ -740,7 +747,7 @@ export default function AdminPage() {
           </div>
           {busy && <p className="admin-busy" style={{ textAlign: 'center', marginTop: 10 }}>{busy}</p>}
           {err && <p className="admin-err" style={{ textAlign: 'center', marginTop: 10 }}>{err}</p>}
-          {result && <p className="admin-ok" style={{ textAlign: 'center', marginTop: 10 }}>{result.draft ? '💾 נשמר כטיוטה (~30 שניות). תצוגה מקדימה: ' : '✅ פורסם! יופיע באתר תוך ~30 שניות: '}<a href={result.url} target="_blank">{result.url}</a></p>}
+          {result && <p className="admin-ok" style={{ textAlign: 'center', marginTop: 10 }}>{result.draft ? '💾 נשמר כטיוטה (~30 שניות). תצוגה מקדימה: ' : '✅ פורסם! יופיע באתר תוך ~30 שניות: '}|a href={result.url} target="_blank">{result.url}</a></p>}
         </section>
 
         <section className="admin-card" style={{ borderColor: 'var(--brand)' }}>
@@ -778,7 +785,7 @@ export default function AdminPage() {
         </div>
         {(() => {
           const S = analytics;
-          if (!S.length) return <p className="admin-busy" style={{ marginBottom: 14 }}>...</p>;
+          if (!S.length) return <p className="admin-busy" style={{ marginBottom: 14 }}>טוען נתונים...</p>;
           const today = S[S.length - 1].date;
           const ym = today.slice(0, 7);
           const [Y, M] = today.split('-').map(Number);
@@ -804,7 +811,7 @@ export default function AdminPage() {
           const months = Object.keys(bm).sort().slice(-6);
           const mmax = Math.max(1, ...months.map((m) => bm[m]));
           const presets: [typeof range, string][] = [['7', '7 ימים'], ['30', '30 ימים'], ['90', '90 ימים'], ['thisMonth', 'החודש'], ['lastMonth', 'חודש שעבר'], ['custom', 'מותאם']];
-          const delta = (d: number) => <span style={{ fontSize: 12, fontWeight: 800, color: d >= 0 ? '#22c55e' : '#e5484d' }}>{d >= 0 ? '▲' : '▼'} {Math.abs(d)}% מהתקופה הקודמת</span>;
+          const delta = (d: number) => <span style={{ fontSize: 12, fontWeight: 800, color: d >= 0 ? '#22c55e' : '#e5484d' }}>{d >= 0 ? '▲' : '▼'} {Math.abs(d)}% ިפקו הקודמת</span>;
           return (
             <>
               <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 12 }}>
@@ -820,14 +827,14 @@ export default function AdminPage() {
               )}
               <div className="kpi-grid" style={{ gridTemplateColumns: 'repeat(3,1fr)' }}>
                 <div className="kpi"><div className="kpi-label">🔗 קליקים</div><div className="kpi-val" style={{ fontSize: 24 }}>{cClicks.toLocaleString()}</div>{prev.length > 0 && <div style={{ marginTop: 4 }}>{delta(dClicks)}</div>}</div>
-                <div className="kpi"><div className="kpi-label">👁 צפייות</div><div className="kpi-val" style={{ fontSize: 24 }}>{cViews.toLocaleString()}</div>{prev.length > 0 && <div style={{ marginTop: 4 }}>{delta(dViews)}</div>}</div>
+                <div className="kpi"><div className="kpi-label">👁 צפיות</div><div className="kpi-val" style={{ fontSize: 24 }}>{cViews.toLocaleString()}</div>{prev.length > 0 && <div style={{ marginTop: 4 }}>{delta(dViews)}</div>}</div>
                 <div className="kpi"><div className="kpi-label">📈 CTR</div><div className="kpi-val" style={{ fontSize: 24 }}>{cCtr}%</div></div>
               </div>
               <div className="admin-card" style={{ marginTop: 14 }}>
                 <div className="admin-h2-row"><h2 className="admin-h2">קליקים לפי יום</h2><span className="admin-hint">{from} ← {to}</span></div>
                 {cur.length ? (
                   <div style={{ display: 'flex', alignItems: 'flex-end', gap: 3, height: 90 }}>
-                    {cur.map((s) => (<div key={s.date} title={`${s.date} · ${s.clicks}`} style={{ flex: 1, background: 'var(--brand)', borderRadius: '4px 4px 0 0', height: `${Math.round((s.clicks / dmax) * 100)}%`, minHeight: s.clicks ? 3 : 0 }} />))}
+                    {cur.map((s) => (<div key={s.date} title={`${s.date} · ${s.clicks} קליקים`} style={{ flex: 1, background: 'var(--brand)', borderRadius: '4px 4px 0 0', height: `${Math.round((s.clicks / dmax) * 100)}%`, minHeight: s.clicks ? 3 : 0 }} />))}
                   </div>
                 ) : <p className="admin-hint">אין נתונים בטווח הזה.</p>}
               </div>
@@ -886,9 +893,13 @@ export default function AdminPage() {
           <label className="full" style={{ display: 'block', marginTop: 8 }}>תווית (אופציונלי)<input className="admin-input" placeholder="למשל: מכירת הספר" value={linkLabel} onChange={(e) => setLinkLabel(e.target.value)} /></label>
           <button className="admin-btn big" style={{ marginTop: 10, width: '100%' }} onClick={shortenLink} disabled={!!busy}>✂️ קצר וצור קישור מעקב</button>
           {lastShort && (
-            <div className="admin-ok" style={{ marginTop: 10, display: 'flex', gap: 8, alignItems: 'center', justifyContent: 'center', flexWrap: 'wrap' }}>
-              <a href={lastShort} target="_blank">{lastShort}</a>
-              <button className="admin-btn ghost sm" onClick={() => navigator.clipboard?.writeText(lastShort).catch(() => {})}>📋 העתק</button>
+            <div className="admin-ok" style={{ marginTop: 10, display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
+              {lastIm && <img src={lastIm} alt="" style={{ width: 56, height: 56, borderRadius: 10, objectFit: 'cover', flexShrink: 0, border: '1px solid var(--line)' }} onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }} />}
+              <div style={{ flex: 1, minWidth: 0 }}>
+                {lastTi && <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 2 }}>{lastTi}</div>}
+                <a href={lastShort} target="_blank" style={{ wordBreak: 'break-all' }}>{lastShort}</a>
+              </div>
+              <button className="admin-btn ghost sm" style={{ flexShrink: 0 }} onClick={() => navigator.clipboard?.writeText(lastShort).catch(() => {})}>📋 העתק</button>
             </div>
           )}
           {busy && <p className="admin-busy" style={{ textAlign: 'center', marginTop: 8 }}>{busy}</p>}
@@ -902,14 +913,22 @@ export default function AdminPage() {
         {links.length === 0 && <p className="admin-hint">עדיין אין קישורים מקוצרים.</p>}
         {links.map((l) => (
           <div className="menu-row" key={l.code}>
-            <div className="menu-row-main">
-              <div className="menu-row-title"><strong>{l.t || l.short}</strong></div>
-              <div className="admin-hint" style={{ wordBreak: 'break-all' }}>{l.short} → {l.u}</div>
-              <div className="menu-row-chips" style={{ marginTop: 6 }}>
-                <span className="stat-chip">📱 וואטסאפ: <b>{l.wa}</b></span>
-                <span className="stat-chip">🖥 עמוד: <b>{l.page}</b></span>
-                <span className="stat-chip">🌐 אחר: <b>{l.other}</b></span>
-                <span className="stat-chip">🔗 סה״כ: <b>{l.total}</b></span>
+            <div className="menu-row-main" style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
+              {l.im ? (
+                <img src={l.im} alt="" loading="lazy" style={{ width: 64, height: 64, borderRadius: 12, objectFit: 'cover', flexShrink: 0, border: '1px solid var(--line)' }} onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }} />
+              ) : (
+                <div style={{ width: 64, height: 64, borderRadius: 12, flexShrink: 0, background: 'var(--line)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24 }}>🔗</div>
+              )}
+              <div style={{ minWidth: 0, flex: 1 }}>
+                <div className="menu-row-title"><strong>{l.t || l.ti || l.short}</strong></div>
+                {l.ti && l.ti !== l.t && <div className="admin-hint" style={{ fontWeight: 700, color: 'var(--ink)' }}>{l.ti}</div>}
+                <div className="admin-hint" style={{ wordBreak: 'break-all' }}>{l.short} ← {l.u}</div>
+                <div className="menu-row-chips" style={{ marginTop: 6 }}>
+                  <span className="stat-chip">📱 וואטסאפ: <b>{l.wa}</b></span>
+                  <span className="stat-chip">🖥 עמוד: <b>{l.page}</b></span>
+                  <span className="stat-chip">🌐 אחר: <b>{l.other}</b></span>
+                  <span className="stat-chip">🔗 סה״כ: <b>{l.total}</b></span>
+                </div>
               </div>
             </div>
             <div className="menu-row-actions">
