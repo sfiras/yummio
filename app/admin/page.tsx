@@ -661,7 +661,7 @@ export default function AdminPage() {
             <div>
               <strong style={{ fontSize: 15 }}>מצב קישורים</strong>
               <p className="admin-hint" style={{ marginTop: 4 }}>
-                {tracked ? 'קישורים חדשים קצרים עם מעקב (וואטסאפ / עמוד)' : 'שמירת הקישורים המקוריים (bit.ly) — נזהה ונמיר אוטומטית)}
+                {tracked ? 'קישורים חדשים קצרים עם מעקב (וואטסאפ / עמוד)' : 'שמירת הקישורים המקוריים (bit.ly) — נזהה ונמיר אוטומטית)'}
               </p>
             </div>
             <div className="mode-toggle">
