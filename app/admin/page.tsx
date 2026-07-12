@@ -362,7 +362,7 @@ export default function AdminPage() {
   }
 
   async function publish(asDraft = false) {
-    // הגנה מפני דריסה בשוגג: אם כבר קיים תפריט לאותו תאריך+הודעה => זהו עדכון לפוסט קיים (הקובץ יידרס)
+    // הגנה מפני דריסה בשוגג: אם כבר קיים תפריט לאותו תאריך+הודעה ולא זה שאנחנו עורכים — מאשרים במפורש
     const targetSlug = `${date}-${message}`;
     const collides = !!stats?.some((s) => s.slug === targetSlug);
     if (collides && targetSlug !== editingSlug) {
@@ -661,7 +661,7 @@ export default function AdminPage() {
             <div>
               <strong style={{ fontSize: 15 }}>מצב קישורים</strong>
               <p className="admin-hint" style={{ marginTop: 4 }}>
-                {tracked ? 'קישורים חדשים קצרים עם מעקב (וואטסאפ / עמוד)' : 'שמירת הקישורים המקוריים (bit.ly) — נזהה ונמיר אוטומטית)'}
+                {tracked ? 'קישורים חדשים קצרים עם מעקב (וואטסאפ / עמוד)' : 'שמירת הקישורים המקוריים (bit.ly) — נזהה ונמיר אוטומטית'}
               </p>
             </div>
             <div className="mode-toggle">
@@ -683,7 +683,7 @@ export default function AdminPage() {
             <textarea className="admin-input" rows={2} style={{ marginTop: 6 }} placeholder="טקסט פתיחה קצר ומזמין..." value={intro} onChange={(e) => setIntro(e.target.value)} />
           </label>
           <label style={{ display: 'block', marginTop: 12, fontSize: 13, fontWeight: 700, color: 'var(--ink-soft)' }}>
-            תמונת תצוגה הוואטסאפ (לא חובה — ברירת מחדל: תמונת המתכון הראשון)
+            תמונת תצוגה לוואטסאפ (לא חובה — ברירת מחדל: תמונת המתכון הראשון)
             <div className="admin-inline" style={{ marginTop: 6 }}>
               <input className="admin-input" placeholder="קישור תמונה..." value={image} onChange={(e) => setImage(e.target.value)} />
               <button className="admin-btn sm" type="button" onClick={() => setImage(recipes[0]?.image || '')}>מהמתכון הראשון</button>
@@ -747,7 +747,7 @@ export default function AdminPage() {
           </div>
           {busy && <p className="admin-busy" style={{ textAlign: 'center', marginTop: 10 }}>{busy}</p>}
           {err && <p className="admin-err" style={{ textAlign: 'center', marginTop: 10 }}>{err}</p>}
-          {result && <p className="admin-ok" style={{ textAlign: 'center', marginTop: 10 }}>{result.draft ? '💾 נשמר כטיוטה (~30 שניות). תצוגה מקדימה: ' : '✅ פורסם! יופיע באתר תוך ~30 שניות: '}|a href={result.url} target="_blank">{result.url}</a></p>}
+          {result && <p className="admin-ok" style={{ textAlign: 'center', marginTop: 10 }}>{result.draft ? '💾 נשמר כטיוטה (~30 שניות). תצוגה מקדימה: ' : '✅ פורסם! יופיע באתר תוך ~30 שניות: '}<a href={result.url} target="_blank">{result.url}</a></p>}
         </section>
 
         <section className="admin-card" style={{ borderColor: 'var(--brand)' }}>
@@ -811,7 +811,7 @@ export default function AdminPage() {
           const months = Object.keys(bm).sort().slice(-6);
           const mmax = Math.max(1, ...months.map((m) => bm[m]));
           const presets: [typeof range, string][] = [['7', '7 ימים'], ['30', '30 ימים'], ['90', '90 ימים'], ['thisMonth', 'החודש'], ['lastMonth', 'חודש שעבר'], ['custom', 'מותאם']];
-          const delta = (d: number) => <span style={{ fontSize: 12, fontWeight: 800, color: d >= 0 ? '#22c55e' : '#e5484d' }}>{d >= 0 ? '▲' : '▼'} {Math.abs(d)}% ިפקו הקודמת</span>;
+          const delta = (d: number) => <span style={{ fontSize: 12, fontWeight: 800, color: d >= 0 ? '#22c55e' : '#e5484d' }}>{d >= 0 ? '▲' : '▼'} {Math.abs(d)}% מהתקופה הקודמת</span>;
           return (
             <>
               <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 12 }}>
