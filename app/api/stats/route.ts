@@ -11,7 +11,7 @@ async function fetchBitlyClicks(url: string): Promise<number> {
   if (!token) return 0;
   const m = url.match(/bit\.ly\/([^\s/?#]+)/i);
   if (!m) return 0;
-  const id = encodeURIComponent(`bit.ly/${m[1]}`);
+  const id = `bit.ly/${m[1]}`; // אסור לקודד את ה-/ — Bitly API מצפה לנתיב רגיל
   try {
     const r = await fetch(
       `https://api-ssl.bitly.com/v4/bitlinks/${id}/clicks/summary?unit=day&units=-1`,
