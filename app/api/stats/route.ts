@@ -17,10 +17,11 @@ async function fetchBitlyClicks(url: string): Promise<number> {
       `https://api-ssl.bitly.com/v4/bitlinks/${id}/clicks/summary?unit=day&units=-1`,
       { headers: { Authorization: `Bearer ${token}` }, next: { revalidate: 3600 } }
     );
-    if (!r.ok) return 0;
     const d = await r.json();
+    console.log('[bitly]', id, r.status, JSON.stringify(d).slice(0, 120));
+    if (!r.ok) return 0;
     return Number(d.total_clicks) || 0;
-  } catch { return 0; }
+  } catch (e) { console.log('[bitly-err]', id, String(e)); return 0; }
 }
 
 // מחזיר סטטיסטיקות לכל התפריטים + קליקי bit.ly לתפריטים ישנים (ללא מעקב Yummio)
