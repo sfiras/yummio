@@ -16,7 +16,6 @@ function meta(html: string, prop: string): string {
   return m ? decodeEntities(m[1].trim()) : '';
 }
 
-// מסיר את שם האתר מהכותרת: "מתכון | YUMMIO" => "מתכון"
 function cleanTitle(t: string): string {
   return t
     .replace(/\s*[|·–—\-»]\s*(yummio|יאמיו|יומיו)\s*$/i, '')
@@ -24,7 +23,6 @@ function cleanTitle(t: string): string {
     .trim();
 }
 
-// שם בעל המתכון מתוך JSON-LD (schema.org Recipe.author) או meta author
 function extractAuthor(html: string): string {
   const blocks = html.match(/<script[^>]+type=["']application\/ld\+json["'][^>]*>[\s\S]*?<\/script>/gi) || [];
   for (const block of blocks) {
@@ -50,6 +48,12 @@ function extractAuthor(html: string): string {
   return meta(html, 'author');
 }
 
+function makeAbsolute(imgUrl: string, pageUrl: string): string {
+  if (!imgUrl) return '';
+  if (/^https?:\/\//i.test(imgUrl)) return imgUrl;
+  try { return new URL(imgUrl, pageUrl).href; } catch { return imgUrl; }
+}
+
 /** מושך og:image / כותרת נקייה / תיאור / שם בעל המתכון. עוקב אחרי הפניות (bit.ly) ומחזיר את היעד הסופי. */
 export async function GET(req: Request) {
   if (req.headers.get('x-admin-pass') !== process.env.ADMIN_PASSWORD) {
@@ -59,19 +63,24 @@ export async function GET(req: Request) {
   if (!url || !/^https?:\/\//i.test(url)) {
     return NextResponse.json({ error: 'bad url' }, { status: 400 });
   }
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), 7000);
   try {
     const res = await fetch(url, {
       headers: { 'User-Agent': 'Mozilla/5.0 (compatible; YummioBot/1.0)' },
-      redirect: 'follow', cache: 'no-store',
+      redirect: 'follow', cache: 'no-store', signal: ctrl.signal,
     });
     const html = await res.text();
     const rawTitle = meta(html, 'og:title') || decodeEntities((html.match(/<title[^>]*>([^<]+)<\/title>/i)?.[1] || '').trim());
     const title = cleanTitle(rawTitle);
-    const image = meta(html, 'og:image') || meta(html, 'twitter:image');
+    const rawImage = meta(html, 'og:image') || meta(html, 'twitter:image');
+    const image = makeAbsolute(rawImage, res.url);
     const desc = meta(html, 'og:description') || meta(html, 'description');
     const author = extractAuthor(html);
     return NextResponse.json({ title, image, desc, author, finalUrl: res.url });
   } catch (e) {
     return NextResponse.json({ error: String(e) }, { status: 500 });
+  } finally {
+    clearTimeout(timer);
   }
 }
