@@ -84,7 +84,7 @@ export async function POST(req: Request) {
       pageTotal,
       bitlyTotal,
       clicks,
-      ctr: views ? Math.round((pageTotal / views) * 100) : 0,
+      ctr: views ? Math.round(((waTotal + pageTotal) / views) * 100) : 0,
       sends,
       lastSent: lasts[mi],
       recipes,
