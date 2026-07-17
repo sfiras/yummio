@@ -72,7 +72,7 @@ export async function POST(req: Request) {
     const waTotal = recipes.reduce((s, x) => s + x.wa, 0);
     const pageTotal = recipes.reduce((s, x) => s + x.page, 0);
     const bitlyTotal = recipes.reduce((s, x) => s + (x.bitly || 0), 0);
-    const clicks = waTotal + pageTotal; // CTR מחושב רק מקליקי Yummio (לא bit.ly)
+    const clicks = waTotal + pageTotal + bitlyTotal; // סה"כ לתצוגה (כולל bit.ly לתפריטים ישנים)
     return {
       slug: m.slug,
       title: m.title || m.slug,
