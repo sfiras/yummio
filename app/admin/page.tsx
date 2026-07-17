@@ -8,10 +8,10 @@ type Recipe = {
   url: string; image: string; title: string; desc: string; time: string; level: string;
   author: string; msgTitle: string; msgDesc: string;
 };
-type StatRecipe = { i: number; title: string; wa: number; page: number; total: number };
+type StatRecipe = { i: number; title: string; wa: number; page: number; bitly?: number; total: number };
 type StatMenu = {
   slug: string; title: string; dateLabel: string; message: number; draft?: boolean; waText?: string;
-  views: number; waTotal: number; pageTotal: number; clicks: number; ctr: number;
+  views: number; waTotal: number; pageTotal: number; bitlyTotal?: number; clicks: number; ctr: number;
   sends?: number; lastSent?: string | null; recipes: StatRecipe[];
 };
 type View = 'overview' | 'publish' | 'menus' | 'stats' | 'links' | 'settings';
@@ -634,7 +634,12 @@ export default function AdminPage() {
           </div>
           <div className="menu-kpi-line">
             <span>👁 {m.views}</span>
-            <span>🔗 {m.clicks}</span>
+            <span>
+              🔗 {m.clicks}
+              {(m.bitlyTotal || 0) > 0 && (
+                <span style={{ fontSize: 10, fontWeight: 800, marginInlineStart: 5, padding: '1px 5px', borderRadius: 6, background: '#fef3c7', color: '#92400e', verticalAlign: 'middle' }}>bit.ly</span>
+              )}
+            </span>
             <span>CTR {m.ctr}%</span>
             {!!m.sends && <span>🔁 {m.sends}{m.lastSent ? ` · ${m.lastSent}` : ''}</span>}
           </div>
