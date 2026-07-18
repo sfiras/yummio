@@ -435,9 +435,10 @@ export default function AdminPage() {
     if (!stats) return null;
     const views = stats.reduce((s, m) => s + m.views, 0);
     const clicks = stats.reduce((s, m) => s + m.clicks, 0);
+    const pageClicks = stats.reduce((s, m) => s + m.pageTotal, 0);
     let top = { title: '—', total: 0 };
     for (const m of stats) for (const r of m.recipes) if (r.total > top.total) top = { title: r.title, total: r.total };
-    return { views, clicks, ctr: views ? Math.round((clicks / views) * 100) : 0, menus: stats.length, top };
+    return { views, clicks, ctr: views ? Math.round((pageClicks / views) * 100) : 0, menus: stats.length, top };
   })();
 
   if (!authed) {
@@ -869,16 +870,34 @@ export default function AdminPage() {
             </div>
             <div className="stat-chips">
               <span className="stat-chip">👁 צפיות: <b>{m.views}</b></span>
-              <span className="stat-chip">📱 וואטסאפ: <b>{m.waTotal}</b></span>
+              <span className="<span className="stat-chip">
+                📱 וואטסאפ: <b>{m.waTotal}</b>
+                {(m.bitlyTotal || 0) > 0 && (
+                  <span style={{ display: 'block', fontSize: 11, marginTop: 2, fontWeight: 700, color: '#92400e' }}>
+                    <span style={{ background: '#fef3c7', padding: '1px 4px', borderRadius: 4, fontSize: 10 }}>bit.ly</span>{' '}{m.bitlyTotal}
+                  </span>
+                )}
+              </span>
               <span className="stat-chip">🖥 עמוד: <b>{m.pageTotal}</b></span>
               <span className="stat-chip">🔗 קליקים: <b>{m.clicks}</b></span>
-              <span className="stat-chip">CTR: <b>{m.ctr}%</b></span>
+              <span className="stat-chip">📈 CTR עמוד: <b>{m.ctr}%</b></span>
             </div>
             <div className="stat-table">
               <div className="stat-row stat-head"><span>#</span><span>מתכון</span><span>וואטסאפ</span><span>עמוד</span><span>סה״כ</span></div>
               {m.recipes.map((r) => (
                 <div className="stat-row" key={r.i}>
-                  <span>{r.i + 1}</span><span className="stat-title">{r.title}</span><span>{r.wa}</span><span>{r.page}</span><span><b>{r.total}</b></span>
+                  <span>{r.i + 1}</span>
+                  <span className="stat-title">{r.title}</span>
+                  <span>
+                    {r.wa}
+                    {(r.bitly || 0) > 0 && (
+                      <span style={{ display: 'block', fontSize: 10, fontWeight: 700, color: '#92400e', marginTop: 1 }}>
+                        <span style={{ background: '#fef3c7', padding: '0 3px', borderRadius: 3, fontSize: 9 }}>bit.ly</span>{' '}{r.bitly}
+                      </span>
+                    )}
+                  </span>
+                  <span>{r.page}</span>
+                  <span><b>{r.total}</b></span>
                 </div>
               ))}
             </div>
