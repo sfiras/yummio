@@ -870,7 +870,7 @@ export default function AdminPage() {
             </div>
             <div className="stat-chips">
               <span className="stat-chip">👁 צפיות: <b>{m.views}</b></span>
-              <span className="<span className="stat-chip">
+              <span className="stat-chip">
                 📱 וואטסאפ: <b>{m.waTotal}</b>
                 {(m.bitlyTotal || 0) > 0 && (
                   <span style={{ display: 'block', fontSize: 11, marginTop: 2, fontWeight: 700, color: '#92400e' }}>
