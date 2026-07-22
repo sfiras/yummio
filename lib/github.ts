@@ -49,6 +49,17 @@ export async function putFile(path: string, content: string, message: string) {
   return res.json();
 }
 
+/** מחזיר את תוכן הקובץ כ-JSON, או null אם לא קיים */
+export async function getFileJson<T = unknown>(path: string): Promise<T | null> {
+  const token = process.env.GITHUB_TOKEN;
+  if (!token) return null;
+  const url = `${API}/repos/${repo()}/contents/${path}`;
+  const r = await fetch(`${url}?ref=main`, { headers: authHeaders(token), cache: 'no-store' });
+  if (!r.ok) return null;
+  const j = await r.json();
+  return JSON.parse(Buffer.from(j.content.replace(/\n/g, ''), 'base64').toString('utf-8')) as T;
+}
+
 /** מוחק קובץ מהמאגר (משמש למחיקת תפריט). מפעיל פריסה אוטומטית ב-Vercel */
 export async function deleteFile(path: string, message: string) {
   const token = process.env.GITHUB_TOKEN;
