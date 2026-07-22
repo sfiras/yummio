@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { putFile } from '@/lib/github';
+import { putFile, getFileJson } from '@/lib/github';
 import { kvSet } from '@/lib/kv';
 import { BP } from '@/lib/base';
 
@@ -15,14 +15,14 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
   }
 
-  let body: { date?: string; message?: number | string; title?: string; intro?: string; image?: string; tracked?: boolean; draft?: boolean; waText?: string; recipes?: RecipeIn[] };
+  let body: { date?: string; message?: number | string; title?: string; intro?: string; image?: string; tracked?: boolean; draft?: boolean; waText?: string; recipes?: RecipeIn[]; force?: boolean };
   try {
     body = await req.json();
   } catch {
     return NextResponse.json({ error: 'bad json' }, { status: 400 });
   }
 
-  const { date, message, title, intro, image, tracked, draft, waText, recipes } = body;
+  const { date, message, title, intro, image, tracked, draft, waText, recipes, force } = body;
   const isTracked = tracked !== false;
   const isDraft = draft === true;
   if (!date || !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
@@ -31,6 +31,15 @@ export async function POST(req: Request) {
   const msgNum = Number(message || 1);
   if (!Array.isArray(recipes) || recipes.length === 0) {
     return NextResponse.json({ error: 'אין מתכונים' }, { status: 400 });
+  }
+
+  // הגנת overwrite: אם הקובץ קיים ו-force לא הועבר — מחזירים 409 עם פרטי התפריט הקיים
+  const slug = `${date}-${msgNum}`;
+  if (!force) {
+    const existing = await getFileJson<{ title?: string }>(`data/menus/${slug}.json`);
+    if (existing) {
+      return NextResponse.json({ error: 'exists', slug, existingTitle: existing.title || slug }, { status: 409 });
+    }
   }
 
   const clean = recipes
@@ -49,7 +58,6 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'כל מתכון צריך לפחות שם וקישור' }, { status: 400 });
   }
 
-  const slug = `${date}-${msgNum}`;
   const json =
     JSON.stringify(
       { date, message: msgNum, title: (title || '').trim(), intro: (intro || '').trim(), image: (image || '').trim(), tracked: isTracked, draft: isDraft, waText: (waText || '').trim(), recipes: clean },
