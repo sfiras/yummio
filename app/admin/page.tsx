@@ -73,6 +73,7 @@ export default function AdminPage() {
   const [bulk, setBulk] = useState('');
   const [waText, setWaText] = useState(''); // הודעת הוואטסאפ ששויכה לעמוד (מה ששלחת)
   const [msgModal, setMsgModal] = useState<{ title: string; text: string } | null>(null); // חלון "הצג הודעה"
+  const [overwriteModal, setOverwriteModal] = useState<{ slug: string; existingTitle: string; asDraft: boolean } | null>(null);
   const [hasDraft, setHasDraft] = useState(false); // האם קיימת טיוטה שמורה בדפדפן
   const [editingSlug, setEditingSlug] = useState(''); // אם עורכים תפריט קיים — ה-slug שלו (כדי לא להזהיר על דריסה עצמית)
   const skipSave = useRef(true); // מדלגים על השמירה הראשונה (mount) כדי לא לדרוס טיוטה קיימת
@@ -361,35 +362,24 @@ export default function AdminPage() {
     setBusy('');
   }
 
-    async function publish(asDraft = false) {
-    // הגנה מפני דריסה בשוגג: תמיד מאשרים כשקיים תפריט לאותו slug — גם בעריכה
-    const targetSlug = `${date}-${message}`;
-    const collides = !!stats?.some((s) => s.slug === targetSlug);
-    if (collides) {
-      const existing = stats?.find((s) => s.slug === targetSlug);
-      const isIntentionalUpdate = targetSlug === editingSlug;
-      const msg = isIntentionalUpdate
-        ? `♻️ עדכון תפריט קיים: ${date} · הודעה ${message}${existing?.title ? ` ("${existing.title}")` : ''}.
-התוכן הנוכחי יוחלף בתוכן החדש.
-
-להמשיך?`
-        : `⚠️ כבר קיים תפריט לתאריך ${date} · הודעה ${message}${existing?.title ? ` ("${existing.title}")` : ''}.
-פרסום ידרוס אותו לצמיתות.
-
-להמשיך? (לתפריט חדש — שנו את מספר ההודעה)`;
-      if (!window.confirm(msg)) return;
-    }
+    async function publish(asDraft = false, force = false) {
     setErr(''); setResult(null); setCodes([]); setBusy(asDraft ? 'שומר טיוטה...' : 'מפרסם...');
     try {
       const r = await fetch(BP + '/api/publish', {
         method: 'POST', headers: { 'Content-Type': 'application/json', 'x-admin-pass': pass },
-        body: JSON.stringify({ date, message, title, intro, image, tracked, draft: asDraft, waText, recipes }),
+        body: JSON.stringify({ date, message, title, intro, image, tracked, draft: asDraft, waText, recipes, force }),
       });
+      if (r.status === 409) {
+        const d = await r.json();
+        setBusy('');
+        setOverwriteModal({ slug: d.slug, existingTitle: d.existingTitle || d.slug, asDraft });
+        return;
+      }
       const d = await r.json();
       if (!r.ok || d.error) throw new Error(d.error || 'failed');
       setResult({ url: d.url, slug: d.slug, draft: !!d.draft });
       setCodes(d.codes || []);
-      setEditingSlug(d.slug); // סנכרון slug לאחר פרסום מוצלח
+      setEditingSlug(d.slug);
       loadStats();
     } catch (e) { setErr(String(e)); }
     finally { setBusy(''); }
@@ -510,6 +500,26 @@ export default function AdminPage() {
           {view === 'settings' && renderSettings()}
         </div>
       </div>
+      {overwriteModal && (
+        <div onClick={() => setOverwriteModal(null)} role="dialog" aria-modal="true" aria-label="אישור דריסת תפריט" style={{ position: 'fixed', inset: 0, zIndex: 300, background: 'rgba(0,0,0,.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
+          <div onClick={(e) => e.stopPropagation()} style={{ background: 'var(--card)', color: 'var(--ink)', borderRadius: 16, padding: 28, width: 'min(420px,100%)', display: 'flex', flexDirection: 'column', gap: 18, boxShadow: 'var(--shadow-hover)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <span style={{ fontSize: 28 }}>⚠️</span>
+              <strong style={{ fontSize: 16 }}>תפריט קיים — דריסה?</strong>
+            </div>
+            <p style={{ margin: 0, lineHeight: 1.65, fontSize: 14 }}>
+              כבר קיים תפריט <b>"{overwriteModal.existingTitle}"</b> לתאריך <b>{date} · הודעה {message}</b>.<br/>
+              פרסום ידרוס אותו לצמיתות וינתק את הנתונים הקיימים.
+            </p>
+            <div style={{ display: 'flex', gap: 10 }}>
+              <button className="admin-btn ghost big" style={{ flex: 1 }} onClick={() => setOverwriteModal(null)}>ביטול</button>
+              <button className="admin-btn big" style={{ flex: 1, background: '#dc2626', borderColor: '#dc2626', color: '#fff' }} onClick={() => { const m = overwriteModal; setOverwriteModal(null); publish(m.asDraft, true); }}>
+                {overwriteModal.asDraft ? '💾 דרוס ושמור טיוטה' : '🗑 דרוס ופרסם'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       {msgModal && (
         <div onClick={() => setMsgModal(null)} role="dialog" aria-modal="true" aria-label="הודעת וואטסאפ" style={{ position: 'fixed', inset: 0, zIndex: 200, background: 'rgba(0,0,0,.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
           <div onClick={(e) => e.stopPropagation()} style={{ background: 'var(--card)', color: 'var(--ink)', borderRadius: 16, padding: 18, width: 'min(560px,100%)', maxHeight: '86vh', display: 'flex', flexDirection: 'column', gap: 10, boxShadow: 'var(--shadow-hover)' }}>
