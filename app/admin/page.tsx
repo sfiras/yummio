@@ -361,14 +361,23 @@ export default function AdminPage() {
     setBusy('');
   }
 
-  async function publish(asDraft = false) {
-    // הגנה מפני דריסה בשוגג: אם כבר קיים תפריט לאותו תאריך+הודעה ולא זה שאנחנו עורכים — מאשרים במפורש
+    async function publish(asDraft = false) {
+    // הגנה מפני דריסה בשוגג: תמיד מאשרים כשקיים תפריט לאותו slug — גם בעריכה
     const targetSlug = `${date}-${message}`;
     const collides = !!stats?.some((s) => s.slug === targetSlug);
-    if (collides && targetSlug !== editingSlug) {
+    if (collides) {
       const existing = stats?.find((s) => s.slug === targetSlug);
-      const ok = window.confirm(`⚠️ כבר קיים תפריט לתאריך ${date} · הודעה ${message}${existing?.title ? ` ("${existing.title}")` : ''}.\nפרסום ידרוס אותו לצמיתות ויאפס את הנתונים שלו.\n\nלהמשיך? (לתפריט חדש — שנו את מספר ההודעה)`);
-      if (!ok) return;
+      const isIntentionalUpdate = targetSlug === editingSlug;
+      const msg = isIntentionalUpdate
+        ? `♻️ עדכון תפריט קיים: ${date} · הודעה ${message}${existing?.title ? ` ("${existing.title}")` : ''}.
+התוכן הנוכחי יוחלף בתוכן החדש.
+
+להמשיך?`
+        : `⚠️ כבר קיים תפריט לתאריך ${date} · הודעה ${message}${existing?.title ? ` ("${existing.title}")` : ''}.
+פרסום ידרוס אותו לצמיתות.
+
+להמשיך? (לתפריט חדש — שנו את מספר ההודעה)`;
+      if (!window.confirm(msg)) return;
     }
     setErr(''); setResult(null); setCodes([]); setBusy(asDraft ? 'שומר טיוטה...' : 'מפרסם...');
     try {
@@ -380,6 +389,7 @@ export default function AdminPage() {
       if (!r.ok || d.error) throw new Error(d.error || 'failed');
       setResult({ url: d.url, slug: d.slug, draft: !!d.draft });
       setCodes(d.codes || []);
+      setEditingSlug(d.slug); // סנכרון slug לאחר פרסום מוצלח
       loadStats();
     } catch (e) { setErr(String(e)); }
     finally { setBusy(''); }
