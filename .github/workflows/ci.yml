@@ -1,7 +1,7 @@
 name: CI
 
 # שער איכות: רץ בכל דחיפה ל-main ובכל Pull Request.
-# אם ה-typecheck או ה-build נכשלים — ה-commit מסומן באדום ולא אמור לעלות לפרודקשן.
+# אם ה-typecheck, ה-lint, או ה-build נכשלים — ה-commit מסומן באדום ולא עולה לפרודקשן.
 on:
   push:
     branches: [main]
@@ -19,10 +19,34 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 24
+
+      - name: Cache .next build
+        uses: actions/cache@v4
+        with:
+          path: .next/cache
+          key: ${{ runner.os }}-nextjs-${{ hashFiles('package-lock.json') }}-${{ hashFiles('**/*.ts','**/*.tsx','**/*.js','**/*.css') }}
+          restore-keys: |
+            ${{ runner.os }}-nextjs-${{ hashFiles('package-lock.json') }}-
+            ${{ runner.os }}-nextjs-
 
       - name: Install dependencies
         run: npm install --no-audit --no-fund
+
+      - name: Validate menu JSON files
+        run: |
+          node -e "
+            const fs = require('fs');
+            const dir = 'data/menus';
+            const files = fs.readdirSync(dir).filter(f => f.endsWith('.json'));
+            let ok = true;
+            for (const f of files) {
+              try { JSON.parse(fs.readFileSync(dir + '/' + f, 'utf8')); }
+              catch (e) { console.error('FAIL', f + ':', e.message); ok = false; }
+            }
+            if (!ok) process.exit(1);
+            console.log('OK: ' + files.length + ' menu files valid');
+          "
 
       - name: Typecheck (strict)
         run: npm run typecheck
