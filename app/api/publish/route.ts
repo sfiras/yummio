@@ -65,6 +65,12 @@ export async function POST(req: Request) {
       2
     ) + '\n';
 
+  // Belt-and-suspenders: וידוא JSON תקני לפני כתיבה ל-GitHub
+  try { JSON.parse(json); } catch (e) {
+    console.error('[publish] invalid JSON output:', e);
+    return NextResponse.json({ error: 'שגיאת JSON פנימית — דווח למפתח' }, { status: 500 });
+  }
+
   try {
     await putFile(`data/menus/${slug}.json`, json, `admin: ${isDraft ? 'draft' : 'publish'} ${slug}`);
   } catch (e) {
