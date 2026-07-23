@@ -1,5 +1,6 @@
 // כתיבת קובץ למאגר GitHub דרך ה-API (משמש את לוח הניהול לפרסום תפריט).
 const API = 'https://api.github.com';
+const GITHUB_TIMEOUT_MS = 10_000; // timeout ל-GitHub API — מניע תקיעה אינסופית
 
 function repo(): string {
   return process.env.GITHUB_REPO || 'sfiras/yummio';
@@ -14,6 +15,13 @@ function authHeaders(token: string) {
   };
 }
 
+/** fetch עם timeout — זורק שגיאה אם GitHub לא מגיב תוך GITHUB_TIMEOUT_MS */
+function fetchGH(url: string, opts: RequestInit): Promise<Response> {
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), GITHUB_TIMEOUT_MS);
+  return fetch(url, { ...opts, signal: ctrl.signal }).finally(() => clearTimeout(timer));
+}
+
 /** יוצר/מעדכן קובץ ב-data/menus דרך GitHub Contents API, ומפעיל פריסה אוטומטית ב-Vercel */
 export async function putFile(path: string, content: string, message: string) {
   const token = process.env.GITHUB_TOKEN;
@@ -23,13 +31,13 @@ export async function putFile(path: string, content: string, message: string) {
 
   // אם הקובץ קיים — צריך את ה-sha שלו כדי לעדכן
   let sha: string | undefined;
-  const head = await fetch(`${url}?ref=main`, { headers: authHeaders(token), cache: 'no-store' });
+  const head = await fetchGH(`${url}?ref=main`, { headers: authHeaders(token), cache: 'no-store' });
   if (head.ok) {
     const j = await head.json();
     sha = j.sha;
   }
 
-  const res = await fetch(url, {
+  const res = await fetchGH(url, {
     method: 'PUT',
     headers: { ...authHeaders(token), 'Content-Type': 'application/json' },
     body: JSON.stringify({
@@ -54,7 +62,7 @@ export async function getFileJson<T = unknown>(path: string): Promise<T | null> 
   const token = process.env.GITHUB_TOKEN;
   if (!token) return null;
   const url = `${API}/repos/${repo()}/contents/${path}`;
-  const r = await fetch(`${url}?ref=main`, { headers: authHeaders(token), cache: 'no-store' });
+  const r = await fetchGH(`${url}?ref=main`, { headers: authHeaders(token), cache: 'no-store' });
   if (!r.ok) return null;
   const j = await r.json();
   return JSON.parse(Buffer.from(j.content.replace(/\n/g, ''), 'base64').toString('utf-8')) as T;
@@ -68,7 +76,7 @@ export async function deleteFile(path: string, message: string) {
   const url = `${API}/repos/${repo()}/contents/${path}`;
 
   // צריך את ה-sha של הקובץ כדי למחוק
-  const head = await fetch(`${url}?ref=main`, { headers: authHeaders(token), cache: 'no-store' });
+  const head = await fetchGH(`${url}?ref=main`, { headers: authHeaders(token), cache: 'no-store' });
   if (head.status === 404) return { ok: true, missing: true };
   if (head.status === 401 || head.status === 403) {
     throw new Error('הטוקן של GitHub פג או אינו תקין — יש לחדש את GITHUB_TOKEN בהגדרות Vercel.');
@@ -76,7 +84,7 @@ export async function deleteFile(path: string, message: string) {
   if (!head.ok) throw new Error(`קריאת הקובץ מ-GitHub נכשלה (${head.status}).`);
   const { sha } = await head.json();
 
-  const res = await fetch(url, {
+  const res = await fetchGH(url, {
     method: 'DELETE',
     headers: { ...authHeaders(token), 'Content-Type': 'application/json' },
     body: JSON.stringify({ message, sha, branch: 'main' }),
