@@ -95,6 +95,7 @@ export default function AdminPage() {
   const [range, setRange] = useState<'7' | '30' | '90' | 'thisMonth' | 'lastMonth' | 'custom'>('30');
   const [cFrom, setCFrom] = useState('');
   const [cTo, setCTo] = useState('');
+  const [statMode, setStatMode] = useState<'classic' | 'split'>('classic');
   const [statsBusy, setStatsBusy] = useState(false);
   const [menuQuery, setMenuQuery] = useState('');
 
@@ -879,10 +880,16 @@ export default function AdminPage() {
             </>
           );
         })()}
-        <h2 className="admin-h2" style={{ marginTop: 4 }}>לפי הודעה</h2>
+        <div className="admin-h2-row" style={{ marginTop: 4 }}>
+          <h2 className="admin-h2">לפי הודעה</h2>
+          <div style={{ display: 'flex', gap: 6 }}>
+            <button onClick={() => setStatMode('classic')} style={{ border: '1px solid var(--line)', background: statMode === 'classic' ? 'var(--brand)' : 'var(--card)', color: statMode === 'classic' ? '#fff' : 'var(--ink-soft)', borderRadius: 999, padding: '5px 12px', fontSize: 12, fontWeight: 800, cursor: 'pointer' }}>קלאסי</button>
+            <button onClick={() => setStatMode('split')} style={{ border: '1px solid var(--line)', background: statMode === 'split' ? 'var(--brand)' : 'var(--card)', color: statMode === 'split' ? '#fff' : 'var(--ink-soft)', borderRadius: 999, padding: '5px 12px', fontSize: 12, fontWeight: 800, cursor: 'pointer' }}>הודעה / עמוד</button>
+          </div>
+        </div>
         {statsBusy && <p className="admin-busy">טוען...</p>}
         {!statsBusy && stats && stats.length === 0 && <p className="admin-hint">אין נתונים עדיין.</p>}
-        {!statsBusy && stats && stats.map((m) => (
+        {!statsBusy && stats && statMode === 'classic' && stats.map((m) => (
           <div className="stat-menu" key={m.slug}>
             <div className="stat-menu-head">
               <div><strong>{m.title}</strong> <span className="admin-hint">· {m.dateLabel} · הודעה {m.message}</span></div>
@@ -923,6 +930,54 @@ export default function AdminPage() {
             </div>
           </div>
         ))}
+        {!statsBusy && stats && statMode === 'split' && stats.map((m) => {
+          const msgTotal = m.waTotal + (m.bitlyTotal || 0);
+          return (
+            <div className="stat-menu" key={m.slug}>
+              <div className="stat-menu-head">
+                <div><strong>{m.title}</strong> <span className="admin-hint">· {m.dateLabel} · הודעה {m.message}</span></div>
+                <a className="admin-link" href={`${BP}/menu/${m.slug}`} target="_blank">פתח ↗</a>
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, margin: '4px 0 10px' }}>
+                <div style={{ background: '#E1F5EE', borderRadius: 12, padding: '11px 13px' }}>
+                  <div style={{ fontWeight: 800, color: '#0F6E56', fontSize: 13, marginBottom: 8 }}>📱 הודעת וואטסאפ</div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, color: '#04342C', padding: '2px 0' }}><span>קליקים על מתכונים</span><b>{msgTotal}</b></div>
+                  {(m.bitlyTotal || 0) > 0 && (
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: '#0F6E56', padding: '2px 0' }}><span>מתוכם דרך bit.ly</span><b>{m.bitlyTotal}</b></div>
+                  )}
+                </div>
+                <div style={{ background: '#E6F1FB', borderRadius: 12, padding: '11px 13px' }}>
+                  <div style={{ fontWeight: 800, color: '#185FA5', fontSize: 13, marginBottom: 8 }}>🖥 עמוד התפריט</div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, color: '#042C53', padding: '2px 0' }}><span>צפיות בעמוד</span><b>{m.views}</b></div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, color: '#042C53', padding: '2px 0' }}><span>קליקים על מתכונים</span><b>{m.pageTotal}</b></div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, color: '#042C53', borderTop: '0.5px solid #B5D4F4', marginTop: 5, paddingTop: 6 }}><span>CTR עמוד</span><b>{m.ctr}%</b></div>
+                </div>
+              </div>
+              <div className="stat-table">
+                <div className="stat-row stat-head"><span>#</span><span>מתכון</span><span>הודעה</span><span>עמוד</span><span>סה״כ</span></div>
+                {m.recipes.map((r) => {
+                  const rMsg = r.wa + (r.bitly || 0);
+                  return (
+                    <div className="stat-row" key={r.i}>
+                      <span>{r.i + 1}</span>
+                      <span className="stat-title">{r.title}</span>
+                      <span style={{ color: '#0F6E56', fontWeight: 700 }}>
+                        {rMsg}
+                        {(r.bitly || 0) > 0 && (
+                          <span style={{ display: 'block', fontSize: 10, fontWeight: 700, color: '#92400e', marginTop: 1 }}>
+                            <span style={{ background: '#fef3c7', padding: '0 3px', borderRadius: 3, fontSize: 9 }}>bit.ly</span>{' '}{r.bitly}
+                          </span>
+                        )}
+                      </span>
+                      <span style={{ color: '#185FA5', fontWeight: 700 }}>{r.page}</span>
+                      <span><b>{r.total}</b></span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          );
+        })}
       </>
     );
   }
