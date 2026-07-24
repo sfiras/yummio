@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { putFile, getFileJson } from '@/lib/github';
+import { putFile, getFileRaw } from '@/lib/github';
 import { kvSet } from '@/lib/kv';
 import { BP } from '@/lib/base';
 
@@ -33,13 +33,14 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'אין מתכונים' }, { status: 400 });
   }
 
-  // הגנת overwrite: אם הקובץ קיים ו-force לא הועבר — מחזירים 409 עם פרטי התפריט הקיים
+  // הגנת overwrite: קוראים את הקובץ הקיים פעם אחת (raw) ומשתמשים בו גם ל-409 וגם לגיבוי
   const slug = `${date}-${msgNum}`;
-  if (!force) {
-    const existing = await getFileJson<{ title?: string }>(`data/menus/${slug}.json`);
-    if (existing) {
-      return NextResponse.json({ error: 'exists', slug, existingTitle: existing.title || slug }, { status: 409 });
-    }
+  const menuPath = `data/menus/${slug}.json`;
+  const existingRaw = await getFileRaw(menuPath);
+  if (existingRaw && !force) {
+    let existingTitle = slug;
+    try { existingTitle = (JSON.parse(existingRaw) as { title?: string }).title || slug; } catch { /* קובץ פגום — עדיין מזהירים */ }
+    return NextResponse.json({ error: 'exists', slug, existingTitle }, { status: 409 });
   }
 
   const clean = recipes
@@ -71,8 +72,18 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'שגיאת JSON פנימית — דווח למפתח' }, { status: 500 });
   }
 
+  // גיבוי אוטומטי: אם דורסים תפריט קיים — שומרים עותק ב-archive/ לפני הכתיבה (לא חוסם פרסום אם נכשל)
+  if (existingRaw && force) {
+    const ts = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+    try {
+      await putFile(`data/menus/archive/${slug}_${ts}.json`, existingRaw, `archive: backup ${slug} before overwrite`);
+    } catch (e) {
+      console.error('[publish] archive backup failed (continuing):', e);
+    }
+  }
+
   try {
-    await putFile(`data/menus/${slug}.json`, json, `admin: ${isDraft ? 'draft' : 'publish'} ${slug}`);
+    await putFile(menuPath, json, `admin: ${isDraft ? 'draft' : 'publish'} ${slug}`);
   } catch (e) {
     return NextResponse.json({ error: String(e) }, { status: 500 });
   }
