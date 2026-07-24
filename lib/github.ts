@@ -57,15 +57,22 @@ export async function putFile(path: string, content: string, message: string) {
   return res.json();
 }
 
-/** מחזיר את תוכן הקובץ כ-JSON, או null אם לא קיים */
-export async function getFileJson<T = unknown>(path: string): Promise<T | null> {
+/** מחזיר את תוכן הקובץ כמחרוזת גולמית (UTF-8), או null אם לא קיים */
+export async function getFileRaw(path: string): Promise<string | null> {
   const token = process.env.GITHUB_TOKEN;
   if (!token) return null;
   const url = `${API}/repos/${repo()}/contents/${path}`;
   const r = await fetchGH(`${url}?ref=main`, { headers: authHeaders(token), cache: 'no-store' });
   if (!r.ok) return null;
   const j = await r.json();
-  return JSON.parse(Buffer.from(j.content.replace(/\n/g, ''), 'base64').toString('utf-8')) as T;
+  return Buffer.from(j.content.replace(/\n/g, ''), 'base64').toString('utf-8');
+}
+
+/** מחזיר את תוכן הקובץ כ-JSON, או null אם לא קיים */
+export async function getFileJson<T = unknown>(path: string): Promise<T | null> {
+  const raw = await getFileRaw(path);
+  if (raw == null) return null;
+  try { return JSON.parse(raw) as T; } catch { return null; }
 }
 
 /** מוחק קובץ מהמאגר (משמש למחיקת תפריט). מפעיל פריסה אוטומטית ב-Vercel */
