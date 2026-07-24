@@ -67,7 +67,7 @@ export async function POST(req: Request) {
       const page = vals[p++] || 0;
       // bit.ly קליקים: רק כשאין מעקב Yummio (תפריט ישן)
       const bitly = (wa === 0 && page === 0) ? (bitlyMap[`${m.slug}:${i}`] || 0) : 0;
-      return { i, title: r.title, wa, page, bitly, total: wa + page + bitly };
+      return { i, title: r.title, url: r.url, image: r.image, wa, page, bitly, total: wa + page + bitly };
     });
     const waTotal = recipes.reduce((s, x) => s + x.wa, 0);
     const pageTotal = recipes.reduce((s, x) => s + x.page, 0);
