@@ -8,13 +8,13 @@ type Recipe = {
   url: string; image: string; title: string; desc: string; time: string; level: string;
   author: string; msgTitle: string; msgDesc: string;
 };
-type StatRecipe = { i: number; title: string; wa: number; page: number; bitly?: number; total: number };
+type StatRecipe = { i: number; title: string; url?: string; image?: string; wa: number; page: number; bitly?: number; total: number };
 type StatMenu = {
   slug: string; title: string; dateLabel: string; message: number; draft?: boolean; waText?: string;
   views: number; waTotal: number; pageTotal: number; bitlyTotal?: number; clicks: number; ctr: number;
   sends?: number; lastSent?: string | null; recipes: StatRecipe[];
 };
-type View = 'overview' | 'publish' | 'menus' | 'stats' | 'links' | 'settings';
+type View = 'overview' | 'publish' | 'menus' | 'stats' | 'insights' | 'links' | 'settings';
 
 const empty = (): Recipe => ({ url: '', image: '', title: '', desc: '', time: '', level: '', author: '', msgTitle: '', msgDesc: '' });
 const norm = (r: Partial<Recipe>): Recipe => ({
@@ -36,6 +36,7 @@ const NAV: { id: View; label: string; icon: string }[] = [
   { id: 'publish', label: 'פרסום', icon: '✍️' },
   { id: 'menus', label: 'תפריטים', icon: '🗂️' },
   { id: 'stats', label: 'סטטיסטיקות', icon: '📊' },
+  { id: 'insights', label: 'תובנות', icon: '🏆' },
   { id: 'links', label: 'קיצור קישורים', icon: '🔗' },
   { id: 'settings', label: 'הגדרות', icon: '⚙️' },
 ];
@@ -96,6 +97,10 @@ export default function AdminPage() {
   const [cFrom, setCFrom] = useState('');
   const [cTo, setCTo] = useState('');
   const [statMode, setStatMode] = useState<'classic' | 'split'>('classic');
+  const [iRange, setIRange] = useState<'lastWeek' | 'lastMonth' | 'last2m' | 'thisYear' | 'lastYear' | 'custom'>('lastMonth');
+  const [iWeekday, setIWeekday] = useState<'all' | '0' | '1' | '2' | '3' | '4' | '5' | '6'>('all');
+  const [iFrom, setIFrom] = useState('');
+  const [iTo, setITo] = useState('');
   const [statsBusy, setStatsBusy] = useState(false);
   const [menuQuery, setMenuQuery] = useState('');
 
@@ -497,6 +502,7 @@ export default function AdminPage() {
           {view === 'publish' && renderPublish()}
           {view === 'menus' && renderMenus()}
           {view === 'stats' && renderStats()}
+          {view === 'insights' && renderInsights()}
           {view === 'links' && renderLinks()}
           {view === 'settings' && renderSettings()}
         </div>
@@ -978,6 +984,137 @@ export default function AdminPage() {
             </div>
           );
         })}
+      </>
+    );
+  }
+
+  function renderInsights() {
+    const menus = stats || [];
+    const now = new Date(todayISO() + 'T00:00:00');
+    const daysAgo = (n: number) => { const d = new Date(now); d.setDate(d.getDate() - n); return d.toLocaleDateString('en-CA'); };
+    const today = todayISO();
+    let from = '', to = today;
+    if (iRange === 'lastWeek') from = daysAgo(7);
+    else if (iRange === 'lastMonth') from = daysAgo(30);
+    else if (iRange === 'last2m') from = daysAgo(60);
+    else if (iRange === 'thisYear') from = `${now.getFullYear()}-01-01`;
+    else if (iRange === 'lastYear') { from = `${now.getFullYear() - 1}-01-01`; to = `${now.getFullYear() - 1}-12-31`; }
+    else { from = iFrom || today; to = iTo || today; }
+
+    const wdName = ['ראשון', 'שני', 'שלישי', 'רביעי', 'חמישי', 'שישי', 'שבת'];
+    const inRange = menus.filter((m) => {
+      const iso = m.slug.slice(0, 10);
+      if (iso < from || iso > to) return false;
+      if (iWeekday !== 'all' && new Date(iso + 'T00:00:00').getDay() !== Number(iWeekday)) return false;
+      return true;
+    });
+
+    type Entry = { title: string; url?: string; image?: string; total: number; wa: number; page: number; bitly: number; menuTitle: string; menuSlug: string; date: string };
+    const entries: Entry[] = [];
+    inRange.forEach((m) => m.recipes.forEach((r) => entries.push({ title: r.title, url: r.url, image: r.image, total: r.total, wa: r.wa, page: r.page, bitly: r.bitly || 0, menuTitle: m.title, menuSlug: m.slug, date: m.slug.slice(0, 10) })));
+    entries.sort((a, b) => b.total - a.total);
+    const winner = entries[0];
+    const top = entries.slice(0, 12);
+    const maxTotal = winner ? winner.total : 1;
+
+    const withViews = inRange.filter((m) => m.views > 0);
+    const avgCtr = withViews.length ? Math.round(withViews.reduce((s, m) => s + m.ctr, 0) / withViews.length) : 0;
+    const dead = inRange.filter((m) => m.views >= 10 && m.ctr < avgCtr * 0.5).sort((a, b) => a.ctr - b.ctr);
+
+    const buildBestOf = () => {
+      const seen = new Set<string>(); const picks: Entry[] = [];
+      for (const e of entries) { if (!e.url || seen.has(e.title)) continue; seen.add(e.title); picks.push(e); if (picks.length >= 8) break; }
+      if (!picks.length) return;
+      resetComposer();
+      setRecipes(picks.map((e) => norm({ url: e.url, image: e.image, title: e.title })));
+      setTitle('המתכונים המנצחים');
+      setView('publish'); setNavOpen(false);
+    };
+
+    const presets: [typeof iRange, string][] = [['lastWeek', 'שבוע אחרון'], ['lastMonth', 'חודש אחרון'], ['last2m', 'חודשיים'], ['thisYear', 'השנה'], ['lastYear', 'שנה שעברה'], ['custom', 'מותאם']];
+
+    return (
+      <>
+        <div className="admin-h2-row">
+          <h2 className="admin-h2">🏆 תובנות</h2>
+          <button className="admin-btn ghost sm" onClick={() => loadStats()}>רענן</button>
+        </div>
+        <p className="admin-hint" style={{ marginBottom: 12 }}>הדירוג מבוסס על תאריך פרסום ההודעה. שלבו טווח + יום בשבוע כדי לשאול שאלות כמו "המתכון המנצח בימי שישי בחודש האחרון".</p>
+
+        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 10 }}>
+          {presets.map(([k, lbl]) => (
+            <button key={k} onClick={() => setIRange(k)} style={{ border: '1px solid var(--line)', background: iRange === k ? 'var(--brand)' : 'var(--card)', color: iRange === k ? '#fff' : 'var(--ink-soft)', borderRadius: 999, padding: '7px 13px', fontSize: 13, fontWeight: 800, cursor: 'pointer' }}>{lbl}</button>
+          ))}
+        </div>
+        {iRange === 'custom' && (
+          <div className="admin-inline" style={{ gap: 8, marginBottom: 10 }}>
+            <label style={{ flex: 1, fontSize: 12, color: 'var(--ink-soft)' }}>מתאריך<input className="admin-input" type="date" value={iFrom} onChange={(e) => setIFrom(e.target.value)} /></label>
+            <label style={{ flex: 1, fontSize: 12, color: 'var(--ink-soft)' }}>עד תאריך<input className="admin-input" type="date" value={iTo} onChange={(e) => setITo(e.target.value)} /></label>
+          </div>
+        )}
+        <div className="admin-inline" style={{ gap: 8, marginBottom: 14, alignItems: 'center' }}>
+          <span style={{ fontSize: 13, color: 'var(--ink-soft)', fontWeight: 700 }}>יום בשבוע:</span>
+          <select className="admin-input" style={{ flex: 1, maxWidth: 200 }} value={iWeekday} onChange={(e) => setIWeekday(e.target.value as typeof iWeekday)}>
+            <option value="all">כל הימים</option>
+            {wdName.map((w, i) => <option key={i} value={String(i)}>{w}</option>)}
+          </select>
+          <span className="admin-hint">{inRange.length} הודעות · {entries.length} מתכונים</span>
+        </div>
+
+        {!statsBusy && !inRange.length && <p className="admin-hint">אין נתונים בטווח הזה. נסו טווח רחב יותר.</p>}
+
+        {winner && (
+          <div style={{ background: 'linear-gradient(135deg,#fef3c7,#fde68a)', borderRadius: 16, padding: '16px 18px', marginBottom: 16, display: 'flex', gap: 14, alignItems: 'center' }}>
+            {winner.image && <img src={winner.image} alt="" style={{ width: 64, height: 64, borderRadius: 12, objectFit: 'cover', flexShrink: 0 }} onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }} />}
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: 12, fontWeight: 800, color: '#92400e', letterSpacing: 0.5 }}>👑 המתכון המנצח</div>
+              <div style={{ fontSize: 17, fontWeight: 800, color: '#78350f', margin: '2px 0' }}>{winner.title}</div>
+              <div style={{ fontSize: 12, color: '#92400e' }}>{winner.total.toLocaleString()} קליקים · מתוך "{winner.menuTitle}"</div>
+            </div>
+          </div>
+        )}
+
+        {top.length > 0 && (
+          <div className="admin-card" style={{ marginBottom: 16 }}>
+            <div className="admin-h2-row"><h2 className="admin-h2">טופ מתכונים</h2><button className="admin-btn sm" onClick={buildBestOf}>✨ בנה הודעת "Best of"</button></div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 8 }}>
+              {top.map((e, idx) => (
+                <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <span style={{ width: 22, textAlign: 'center', fontWeight: 800, color: idx < 3 ? '#d97706' : 'var(--ink-soft)', fontSize: 13 }}>{idx + 1}</span>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 13, fontWeight: 700, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{e.title}</div>
+                    <div style={{ height: 6, background: 'var(--line)', borderRadius: 3, marginTop: 3, overflow: 'hidden' }}>
+                      <div style={{ height: '100%', width: `${Math.round((e.total / maxTotal) * 100)}%`, background: 'var(--brand)', borderRadius: 3 }} />
+                    </div>
+                  </div>
+                  <span style={{ fontWeight: 800, fontSize: 14, minWidth: 44, textAlign: 'left' }}>{e.total.toLocaleString()}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {inRange.length > 0 && (
+          <div className="admin-card" style={{ marginBottom: 16 }}>
+            <div className="admin-h2-row"><h2 className="admin-h2">🚨 הודעות חלשות</h2><span className="admin-hint">CTR ממוצע: {avgCtr}%</span></div>
+            {dead.length === 0 ? (
+              <p className="admin-hint" style={{ marginTop: 6 }}>✅ אין הודעות חלשות בטווח — כל ההודעות מעל חצי מהממוצע.</p>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 8 }}>
+                {dead.map((m) => (
+                  <div key={m.slug} style={{ display: 'flex', alignItems: 'center', gap: 10, background: '#fef2f2', borderRadius: 10, padding: '8px 12px' }}>
+                    <span style={{ fontWeight: 800, color: '#dc2626', fontSize: 15, minWidth: 44 }}>{m.ctr}%</span>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 13, fontWeight: 700, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{m.title}</div>
+                      <div style={{ fontSize: 11, color: '#991b1b' }}>{m.dateLabel} · יום {wdName[new Date(m.slug.slice(0, 10) + 'T00:00:00').getDay()]} · {m.views} צפיות</div>
+                    </div>
+                    <a className="admin-link" href={`${BP}/menu/${m.slug}`} target="_blank">פתח ↗</a>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
       </>
     );
   }
