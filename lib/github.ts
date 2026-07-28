@@ -57,6 +57,24 @@ export async function putFile(path: string, content: string, message: string) {
   return res.json();
 }
 
+/** יוצר/מעדכן קובץ בינארי (התוכן כבר base64) — משמש לשמירת תמונות קולאז' ב-public/ */
+export async function putFileBase64(path: string, base64Content: string, message: string) {
+  const token = process.env.GITHUB_TOKEN;
+  if (!token) throw new Error('missing GITHUB_TOKEN');
+  const url = `${API}/repos/${repo()}/contents/${path}`;
+  let sha: string | undefined;
+  const head = await fetchGH(`${url}?ref=main`, { headers: authHeaders(token), cache: 'no-store' });
+  if (head.ok) sha = (await head.json()).sha;
+  const res = await fetchGH(url, {
+    method: 'PUT',
+    headers: { ...authHeaders(token), 'Content-Type': 'application/json' },
+    body: JSON.stringify({ message, content: base64Content, sha, branch: 'main' }),
+  });
+  if (res.status === 401 || res.status === 403) throw new Error('טוקן GitHub פג/לא תקין — חדשו את GITHUB_TOKEN.');
+  if (!res.ok) throw new Error(`שמירת התמונה ל-GitHub נכשלה (${res.status}).`);
+  return res.json();
+}
+
 /** מחזיר את תוכן הקובץ כמחרוזת גולמית (UTF-8), או null אם לא קיים */
 export async function getFileRaw(path: string): Promise<string | null> {
   const token = process.env.GITHUB_TOKEN;
