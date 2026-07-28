@@ -20,7 +20,7 @@ export async function POST(req: Request) {
     let short = it.long_url;
     try {
       const r = await fetch('https://api-ssl.bitly.com/v4/shorten', {
-        method: 'POST', headers: auth, body: JSON.stringify({ long_url: it.long_url, tags: ['whatsapp'] }),
+        method: 'POST', headers: auth, body: JSON.stringify({ long_url: it.long_url, tags: ['whatsapp menu'] }),
       });
       const d = await r.json();
       if (d.link) short = d.link;
@@ -28,7 +28,7 @@ export async function POST(req: Request) {
       if (d.id) {
         try {
           await fetch(`https://api-ssl.bitly.com/v4/bitlinks/${encodeURIComponent(d.id)}`, {
-            method: 'PATCH', headers: auth, body: JSON.stringify({ tags: ['whatsapp'] }),
+            method: 'PATCH', headers: auth, body: JSON.stringify({ tags: ['whatsapp menu'] }),
           });
         } catch { /* best effort */ }
       }
