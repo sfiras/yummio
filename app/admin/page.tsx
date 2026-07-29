@@ -347,7 +347,7 @@ export default function AdminPage() {
       const m = d.menu;
       setTitle(m.title || ''); setIntro(m.intro || ''); setImage(m.image || '');
       setRecipes(m.recipes?.length ? m.recipes.map(norm) : [empty()]);
-      setTracked(m.tracked !== false); setCodes([]); setWaText(m.waText || '');
+      setTracked(m.tracked !== false); setCodes(keepSlug ? (d.codes || []) : []); setWaText(m.waText || '');
       if (keepSlug) { setDate(m.date); setMessage(m.message); setEditingSlug(slug); } else { setDate(todayISO()); setMessage(1); setEditingSlug(''); }
       setResult(null); setErr(''); setBulk(''); setView('publish'); setNavOpen(false);
     } catch (e) { setErr(String(e)); }
@@ -495,7 +495,8 @@ export default function AdminPage() {
   function waLinks(): { menu: string; recipes: string[] } {
     const origin = (typeof window !== 'undefined' ? window.location.origin : '') + BP;
     const slug = `${date}-${message}`;
-    const sameSlug = !!result && result.slug === slug;
+    // הקודים תקפים גם אחרי פרסום וגם כשטענו תפריט קיים לעריכה
+    const sameSlug = (!!result && result.slug === slug) || editingSlug === slug;
     const list = recipes.filter((r) => r.title && r.url);
     return {
       menu: `${origin}/menu/${slug}`,
@@ -518,7 +519,11 @@ export default function AdminPage() {
     }).join('\n\n');
 
     const parts: string[] = [];
-    if (waOpening.trim()) parts.push(waOpening.trim());
+    // ברירת מחדל חכמה: אם לא ערכתם את הפתיח — משתמשים בכותרת + מבוא של התפריט
+    const custom = waOpening.trim() && waOpening.trim() !== WA_DEFAULTS.opening.trim();
+    const head = [title.trim() ? `*${title.trim()}*` : '', intro.trim()].filter(Boolean).join('\n\n');
+    const opening = custom ? waOpening.trim() : (head || waOpening.trim());
+    if (opening) parts.push(opening);
     // ההפניה לעמוד התפריט — מיד אחרי הפתיח, מודגשת
     parts.push([`*${waCta.trim()}*`, `*${sh(L.menu)}*`].filter(Boolean).join('\n'));
     if (block) parts.push(block);
