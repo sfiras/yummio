@@ -11,7 +11,8 @@ type Recipe = {
 type StatRecipe = { i: number; title: string; url?: string; image?: string; wa: number; page: number; bitly?: number; total: number };
 type StatMenu = {
   slug: string; title: string; dateLabel: string; message: number; draft?: boolean; waText?: string;
-  views: number; waTotal: number; pageTotal: number; bitlyTotal?: number; clicks: number; ctr: number;
+  views: number; viewsWa?: number; viewsInternal?: number; viewsOther?: number;
+  waTotal: number; pageTotal: number; bitlyTotal?: number; clicks: number; ctr: number;
   sends?: number; lastSent?: string | null; recipes: StatRecipe[];
 };
 type View = 'overview' | 'publish' | 'menus' | 'stats' | 'insights' | 'links' | 'settings';
@@ -514,7 +515,7 @@ export default function AdminPage() {
       const num = EMO[i] || `${i + 1}.`;
       const lines = [`${num} *${r.title}*`];
       if (r.desc) lines.push(r.desc);
-      lines.push(`*${sh(L.recipes[i])}*`); // קישור מודגש
+      lines.push(sh(L.recipes[i])); // קישור נקי — בלי כוכביות
       return lines.join('\n');
     }).join('\n\n');
 
@@ -525,7 +526,7 @@ export default function AdminPage() {
     const opening = custom ? waOpening.trim() : (head || waOpening.trim());
     if (opening) parts.push(opening);
     // ההפניה לעמוד התפריט — מיד אחרי הפתיח, מודגשת
-    parts.push([`*${waCta.trim()}*`, `*${sh(L.menu)}*`].filter(Boolean).join('\n'));
+    parts.push([`*${waCta.trim()}*`, sh(L.menu)].filter(Boolean).join('\n'));
     if (block) parts.push(block);
     const ng = [waNotes.trim(), waGroup.trim()].filter(Boolean).join('\n');
     if (ng) parts.push(ng);
@@ -1102,6 +1103,12 @@ export default function AdminPage() {
                 <div style={{ background: '#E6F1FB', borderRadius: 12, padding: '11px 13px' }}>
                   <div style={{ fontWeight: 800, color: '#185FA5', fontSize: 13, marginBottom: 8 }}>🖥 עמוד התפריט</div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, color: '#042C53', padding: '2px 0' }}><span>צפיות בעמוד</span><b>{m.views}</b></div>
+                  {(m.viewsWa || 0) > 0 && (
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: '#185FA5', padding: '2px 0' }}><span>↳ מוואטסאפ</span><b>{m.viewsWa}</b></div>
+                  )}
+                  {(m.viewsOther || 0) > 0 && (
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: '#185FA5', padding: '2px 0' }}><span>↳ ממקור אחר</span><b>{m.viewsOther}</b></div>
+                  )}
                   <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, color: '#042C53', padding: '2px 0' }}><span>קליקים על מתכונים</span><b>{m.pageTotal}</b></div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, color: '#042C53', borderTop: '0.5px solid #B5D4F4', marginTop: 5, paddingTop: 6 }}><span>CTR עמוד</span><b>{m.ctr}%</b></div>
                 </div>
