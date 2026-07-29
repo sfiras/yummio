@@ -12,7 +12,9 @@ export default function ViewBeacon({ slug }: { slug: string }) {
     } catch {
       /* ignore */
     }
-    fetch(BP + '/api/view?m=' + encodeURIComponent(slug)).catch(() => {});
+    // מוסיפים את מקור ההגעה: ריק => כניסה ישירה (וואטסאפ ברוב המקרים)
+    const ref = (() => { try { return document.referrer || ''; } catch { return ''; } })();
+    fetch(BP + '/api/view?m=' + encodeURIComponent(slug) + '&r=' + encodeURIComponent(ref)).catch(() => {});
   }, [slug]);
   return null;
 }
