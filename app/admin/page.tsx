@@ -96,6 +96,8 @@ export default function AdminPage() {
   const [range, setRange] = useState<'7' | '30' | '90' | 'thisMonth' | 'lastMonth' | 'custom'>('30');
   const [cFrom, setCFrom] = useState('');
   const [cTo, setCTo] = useState('');
+  const [collageBusy, setCollageBusy] = useState('');
+  const [collageUrl, setCollageUrl] = useState('');
   const [statMode, setStatMode] = useState<'classic' | 'split'>('classic');
   const [iRange, setIRange] = useState<'lastWeek' | 'lastMonth' | 'last2m' | 'thisYear' | 'lastYear' | 'custom'>('lastMonth');
   const [iWeekday, setIWeekday] = useState<'all' | '0' | '1' | '2' | '3' | '4' | '5' | '6'>('all');
@@ -254,6 +256,80 @@ export default function AdminPage() {
   function restoreFromMsg(i: number) {
     setRecipes((rs) => rs.map((r, idx) => idx === i ? { ...r, title: r.msgTitle || r.title, desc: r.msgDesc || r.desc } : r));
   }
+  // בונה קולאז' מתמונות המתכונים על גבי canvas בדפדפן (אפס עומס שרת)
+  async function buildCollage(grid: 2 | 3) {
+    const pics = recipes.map((r) => r.image).filter(Boolean).slice(0, grid * grid);
+    if (pics.length < 2) { setErr('צריך לפחות 2 תמונות מתכון (משכו תמונות קודם)'); return; }
+    setErr(''); setCollageBusy('בונה קולאז׳...');
+    try {
+      const S = 1080, cell = S / grid;
+      const canvas = document.createElement('canvas');
+      canvas.width = S; canvas.height = S;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) throw new Error('canvas unsupported');
+      ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, S, S);
+
+      const load = (u: string) => new Promise<HTMLImageElement | null>((res) => {
+        const im = new Image();
+        im.crossOrigin = 'anonymous';
+        im.onload = () => res(im);
+        im.onerror = () => res(null);
+        im.src = `${BP}/api/img?url=${encodeURIComponent(u)}`;
+      });
+      const imgs = await Promise.all(pics.map(load));
+
+      imgs.forEach((im, i) => {
+        if (!im) return;
+        const cx = (i % grid) * cell, cy = Math.floor(i / grid) * cell;
+        // crop "cover" — ממלא את המשבצת בלי עיוות
+        let sw = im.width, sh = im.height, sx = 0, sy = 0;
+        if (im.width / im.height > 1) { sw = im.height; sx = (im.width - sw) / 2; }
+        else { sh = im.width; sy = (im.height - sh) / 2; }
+        ctx.drawImage(im, sx, sy, sw, sh, cx, cy, cell, cell);
+      });
+      // קווי הפרדה עדינים
+      ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 6;
+      for (let i = 1; i < grid; i++) {
+        ctx.beginPath(); ctx.moveTo(i * cell, 0); ctx.lineTo(i * cell, S); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(0, i * cell); ctx.lineTo(S, i * cell); ctx.stroke();
+      }
+
+      const t = (title || '').trim();
+      if (t) {
+        const barH = Math.round(S * 0.17);
+        ctx.fillStyle = 'rgba(0,0,0,0.60)';
+        ctx.fillRect(0, S - barH, S, barH);
+        ctx.fillStyle = '#ffffff';
+        ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.direction = 'rtl';
+        let fs = Math.round(barH * 0.44);
+        ctx.font = `700 ${fs}px system-ui, Arial, sans-serif`;
+        while (ctx.measureText(t).width > S * 0.9 && fs > 22) {
+          fs -= 2; ctx.font = `700 ${fs}px system-ui, Arial, sans-serif`;
+        }
+        ctx.fillText(t, S / 2, S - barH / 2);
+      }
+      setCollageUrl(canvas.toDataURL('image/jpeg', 0.88));
+    } catch (e) { setErr(String(e)); }
+    finally { setCollageBusy(''); }
+  }
+
+  // שומר את הקולאז' בריפו ומגדיר אותו כתמונת התפריט
+  async function useCollage() {
+    if (!collageUrl) return;
+    setCollageBusy('שומר תמונה...');
+    try {
+      const r = await fetch(BP + '/api/publish-image', {
+        method: 'POST', headers: { 'Content-Type': 'application/json', 'x-admin-pass': pass },
+        body: JSON.stringify({ slug: `${date}-${message}`, dataUrl: collageUrl }),
+      });
+      const d = await r.json();
+      if (!r.ok || d.error) throw new Error(d.error || 'failed');
+      setImage(d.url);
+      setCollageUrl('');
+    } catch (e) { setErr(String(e)); }
+    finally { setCollageBusy(''); }
+  }
+
   function resetComposer() {
     setTitle(''); setIntro(''); setImage(''); setRecipes([empty()]); setEditingSlug('');
     setDate(todayISO()); setMessage(1); setBulk(''); setWaText(''); setResult(null); setErr('');
@@ -723,6 +799,26 @@ export default function AdminPage() {
             </div>
           </label>
           {image && <img className="admin-preview" src={image} alt="" style={{ width: 200, height: 110 }} />}
+          <div style={{ marginTop: 12, padding: '12px 14px', background: 'var(--bg-soft, #f8fafc)', borderRadius: 12, border: '1px solid var(--line)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+              <strong style={{ fontSize: 13 }}>🎨 מחולל קולאז׳</strong>
+              <button className="admin-btn sm" type="button" onClick={() => buildCollage(2)} disabled={!!collageBusy}>2×2</button>
+              <button className="admin-btn sm" type="button" onClick={() => buildCollage(3)} disabled={!!collageBusy}>3×3</button>
+              {collageBusy && <span className="admin-busy" style={{ fontSize: 12 }}>{collageBusy}</span>}
+            </div>
+            <p className="admin-hint" style={{ marginTop: 6 }}>בונה תמונה ראשית מתמונות המתכונים + הכותרת. נבנה בדפדפן — בלי עומס שרת.</p>
+            {collageUrl && (
+              <div style={{ marginTop: 10 }}>
+                <img src={collageUrl} alt="" style={{ width: 240, height: 240, borderRadius: 12, objectFit: 'cover', border: '1px solid var(--line)' }} />
+                <div className="admin-inline" style={{ gap: 8, marginTop: 8 }}>
+                  <button className="admin-btn sm" type="button" onClick={useCollage} disabled={!!collageBusy}>✅ קבע כתמונת התפריט</button>
+                  <a className="admin-btn ghost sm" href={collageUrl} download={`${date}-${message}.jpg`} style={{ textDecoration: 'none' }}>⬇️ הורד</a>
+                  <button className="admin-btn ghost sm" type="button" onClick={() => setCollageUrl('')}>בטל</button>
+                </div>
+              </div>
+            )}
+          </div>
+
           <p className="admin-hint">הקישור יהיה: <code>/menu/{date}-{message}</code></p>
         </section>
 
