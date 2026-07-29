@@ -25,15 +25,24 @@ export function generateMetadata({ params }: { params: { slug: string } }): Meta
   if (!menu) return { title: 'Yummio' };
   const title = `${menu.title || 'תפריט'} · ${formatHebrewDate(menu.date)} | Yummio`;
   const description = `${menu.recipes.length} מתכונים טעימים ומהירים — ${menu.recipes.slice(0, 3).map((r) => r.title).join(' · ')}`;
+  // og:image חייב להיות URL מוחלט — ואטסאע לא פותר נתיבים יחסיים
+  const SITE = (process.env.NEXT_PUBLIC_SITE_URL || 'https://menu.yummio.co.il').replace(/\/$/, '');
+  const abs = (u?: string) => {
+    const s = (u || '').trim();
+    if (!s) return '';
+    if (/^https?:\/\//i.test(s)) return s;
+    return `${SITE}${s.startsWith('/') ? '' : '/'}${s}`;
+  };
   // תמונת תצוגה לוואטסאפ: התמונה שנבחרה לתפריט, אחרת תמונת המתכון הראשון
-  const ogImage = menu.image?.trim() || menu.recipes[0]?.image;
-  const images = ogImage ? [ogImage] : [];
+  const ogImage = abs(menu.image) || abs(menu.recipes[0]?.image);
+  const images = ogImage ? [{ url: ogImage, width: 1080, height: 1080 }] : [];
   return {
+    metadataBase: new URL(SITE),
     title,
     description,
     // טיוטה: לא לאינדוקס במנועי חיפוש
     robots: menu.draft ? { index: false, follow: false } : undefined,
-    openGraph: { title, description, images, type: 'article', url: `${process.env.NEXT_PUBLIC_SITE_URL || 'https://yummio.co.il/menus'}/menu/${menu.slug}` },
+    openGraph: { title, description, images, type: 'article', url: `${SITE}/menu/${menu.slug}`, siteName: 'Yummio' },
     twitter: { card: 'summary_large_image', title, description, images },
   };
 }
