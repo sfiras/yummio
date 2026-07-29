@@ -87,6 +87,9 @@ export default function AdminPage() {
   const [waNotes, setWaNotes] = useState(WA_DEFAULTS.notes);
   const [waGroup, setWaGroup] = useState(WA_DEFAULTS.group);
   const [waClosing, setWaClosing] = useState(WA_DEFAULTS.closing);
+  const [waCta, setWaCta] = useState('לכל המתכונים לחצו כאן 👇');
+  const [shortMap, setShortMap] = useState<Record<string, string>>({});
+  const [shortBusy, setShortBusy] = useState('');
   const [tracked, setTracked] = useState(true);
   const [codes, setCodes] = useState<string[]>([]);
 
@@ -488,29 +491,63 @@ export default function AdminPage() {
     else setErr('ההעתקה נכשלה — סמנו את הטקסט והעתיקו ידנית.');
   }
 
-  function buildWaMessage(): string {
-    // origin כולל את נתיב הבסיס (למשל https://yummio.co.il/menus) כדי שכל קישורי הוואטסאפ יעבדו
+  // כל קישורי ההודעה (תפריט + מתכונים) — מקור אמת אחד ל-Bitly ולבניית ההודעה
+  function waLinks(): { menu: string; recipes: string[] } {
     const origin = (typeof window !== 'undefined' ? window.location.origin : '') + BP;
     const slug = `${date}-${message}`;
     const sameSlug = !!result && result.slug === slug;
     const list = recipes.filter((r) => r.title && r.url);
+    return {
+      menu: `${origin}/menu/${slug}`,
+      recipes: list.map((r, i) => !tracked
+        ? r.url // מצב "מקורי": קישור bit.ly קיים נשאר כמו שהוא
+        : (sameSlug && codes[i] ? `${origin}/s/${codes[i]}` : `${origin}/go/${slug}/${i}/wa`)),
+    };
+  }
+
+  function buildWaMessage(): string {
+    const L = waLinks();
+    const sh = (u: string) => shortMap[u] || u; // מעדיפים bit.ly אם כבר קוצר
+    const list = recipes.filter((r) => r.title && r.url);
     const block = list.map((r, i) => {
       const num = EMO[i] || `${i + 1}.`;
-      const link = !tracked
-        ? r.url // מצב "מקורי": משאירים את קישור bit.ly כמו שהוא
-        : (sameSlug && codes[i] ? `${origin}/s/${codes[i]}` : `${origin}/go/${slug}/${i}/wa`);
       const lines = [`${num} *${r.title}*`];
       if (r.desc) lines.push(r.desc);
-      lines.push(link);
+      lines.push(`*${sh(L.recipes[i])}*`); // קישור מודגש
       return lines.join('\n');
     }).join('\n\n');
-    const parts: string[] = [`${origin}/menu/${slug}`];
+
+    const parts: string[] = [];
     if (waOpening.trim()) parts.push(waOpening.trim());
+    // ההפניה לעמוד התפריט — מיד אחרי הפתיח, מודגשת
+    parts.push([`*${waCta.trim()}*`, `*${sh(L.menu)}*`].filter(Boolean).join('\n'));
+    if (block) parts.push(block);
     const ng = [waNotes.trim(), waGroup.trim()].filter(Boolean).join('\n');
     if (ng) parts.push(ng);
-    if (block) parts.push(block);
     if (waClosing.trim()) parts.push(waClosing.trim());
     return parts.join('\n\n');
+  }
+
+  // מקצר את כל קישורי ההודעה ב-Bitly (תג "whatsapp menu") ושומר במפה
+  async function shortenAll() {
+    const L = waLinks();
+    const all = [L.menu, ...L.recipes].filter((u) => /^https?:\/\//i.test(u) && !/bit\.ly\//i.test(u));
+    const todo = all.filter((u) => !shortMap[u]);
+    if (!todo.length) { setErr('אין קישורים חדשים לקיצור (או שכולם כבר מקוצרים).'); return; }
+    setErr(''); setShortBusy(`מקצר ${todo.length} קישורים...`);
+    try {
+      const r = await fetch(BP + '/api/shorten', {
+        method: 'POST', headers: { 'Content-Type': 'application/json', 'x-admin-pass': pass },
+        body: JSON.stringify({ items: todo.map((u) => ({ title: u, long_url: u })) }),
+      });
+      const d = await r.json();
+      if (!r.ok || d.error) throw new Error(d.error || 'failed');
+      const next = { ...shortMap };
+      (d.links || []).forEach((x: { title: string; short: string }) => { if (x.short) next[x.title] = x.short; });
+      setShortMap(next);
+      if (!d.links?.length) setErr('Bitly לא החזיר קישורים — בדקו את BITLY_TOKEN.');
+    } catch (e) { setErr(String(e)); }
+    finally { setShortBusy(''); }
   }
 
   const totals = (() => {
@@ -884,10 +921,19 @@ export default function AdminPage() {
           <p className="admin-hint" style={{ marginBottom: 10 }}>הטקסטים הקבועים נשמרים אצלכם. הקישורים פעילים אחרי פרסום התפריט.</p>
           <div className="admin-recipe-grid">
             <label className="full">פתיח<textarea className="admin-input" rows={2} value={waOpening} onChange={(e) => { setWaOpening(e.target.value); saveTpl({ opening: e.target.value }); }} /></label>
+            <label className="full">שורת הפניה לתפריט (מודגשת אוטומטית)<input className="admin-input" value={waCta} onChange={(e) => setWaCta(e.target.value)} /></label>
             <label className="full">הערות קבועות<textarea className="admin-input" rows={2} value={waNotes} onChange={(e) => { setWaNotes(e.target.value); saveTpl({ notes: e.target.value }); }} /></label>
             <label className="full">קישור הקבוצה<input className="admin-input" placeholder="https://chat.whatsapp.com/..." value={waGroup} onChange={(e) => { setWaGroup(e.target.value); saveTpl({ group: e.target.value }); }} /></label>
             <label className="full">סיום<textarea className="admin-input" rows={2} value={waClosing} onChange={(e) => { setWaClosing(e.target.value); saveTpl({ closing: e.target.value }); }} /></label>
           </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginTop: 12, padding: '10px 12px', background: '#fef3c7', borderRadius: 12 }}>
+            <strong style={{ fontSize: 13, color: '#92400e' }}>🔗 קיצור Bitly</strong>
+            <button className="admin-btn sm" type="button" onClick={shortenAll} disabled={!!shortBusy}>קצר את כל הקישורים</button>
+            {shortBusy && <span className="admin-busy" style={{ fontSize: 12 }}>{shortBusy}</span>}
+            {!shortBusy && Object.keys(shortMap).length > 0 && <span style={{ fontSize: 12, fontWeight: 700, color: '#166534' }}>✓ {Object.keys(shortMap).length} קישורים מקוצרים</span>}
+            {Object.keys(shortMap).length > 0 && <button className="admin-btn ghost sm" type="button" onClick={() => setShortMap({})}>אפס</button>}
+          </div>
+          <p className="admin-hint" style={{ marginTop: 6 }}>קצרו <b>אחרי הפרסום</b> — כך הקישורים כבר סופיים. התג ב-Bitly: <code>whatsapp menu</code>.</p>
           <h3 style={{ fontSize: 14, fontWeight: 800, margin: '14px 0 6px' }}>תצוגה מקדימה (כמו בוואטסאפ):</h3>
           <div style={{ background: '#efeae2', borderRadius: 14, padding: '14px 12px' }}>
             <div style={{ background: '#d9fdd3', color: '#111b21', borderRadius: 12, padding: '8px 10px 6px', maxWidth: '92%', marginInlineStart: 'auto', boxShadow: '0 1px 1px rgba(0,0,0,.12)', fontSize: 14.5, lineHeight: 1.55 }}>
