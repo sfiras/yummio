@@ -96,6 +96,8 @@ export async function POST(req: Request) {
       await kvSet(`s:${code}`, JSON.stringify({ u: r.url, m: slug, r: i, s: 'wa' }));
       return code;
     }));
+    // שומרים את הקודים לפי slug — כך קישורי /s/xxxxx הקצרים זמינים גם אחרי רענון
+    await kvSet(`codes:${slug}`, JSON.stringify(codes));
   }
 
   return NextResponse.json({ ok: true, slug, url: `${BP}/menu/${slug}`, codes, draft: isDraft });
