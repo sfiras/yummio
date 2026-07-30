@@ -100,6 +100,7 @@ export default function AdminPage() {
   const [range, setRange] = useState<'7' | '30' | '90' | 'thisMonth' | 'lastMonth' | 'custom'>('30');
   const [cFrom, setCFrom] = useState('');
   const [cTo, setCTo] = useState('');
+  const [sel, setSel] = useState<number[]>([]);
   const [collageBusy, setCollageBusy] = useState('');
   const [collageUrl, setCollageUrl] = useState('');
   const [statMode, setStatMode] = useState<'classic' | 'split'>('classic');
@@ -260,13 +261,52 @@ export default function AdminPage() {
   function restoreFromMsg(i: number) {
     setRecipes((rs) => rs.map((r, idx) => idx === i ? { ...r, title: r.msgTitle || r.title, desc: r.msgDesc || r.desc } : r));
   }
+  // ── אלגוריתם בחירה: מדרג מתכונים לפי ביצועים היסטוריים + סיגנלים בכותרת ──
+  function pickBest(n: number) {
+    // מפת ביצועים: שם מתכון => סה"כ קליקים בכל התפריטים בעבר
+    const hist: Record<string, number> = {};
+    (stats || []).forEach((m) => m.recipes.forEach((r) => {
+      const k = (r.title || '').trim();
+      if (k) hist[k] = (hist[k] || 0) + r.total;
+    }));
+    const score = (r: Recipe) => {
+      if (!r.image) return -1; // בלי תמונה אין מה לשים בקולאז'
+      let s = 100;
+      const h = hist[(r.title || '').trim()];
+      if (h) s += Math.min(h, 500) / 5;                        // עד +100 מנתוני אמת
+      const t = r.title || '';
+      if (/\d/.test(t)) s += 15;                               // מספרים מוכרים ("5 דקות")
+      if (/ללא|בלי/.test(t)) s += 12;                          // צורך תזונתי
+      if (/דקות|קל|פשוט|מהיר|בקלי/.test(t)) s += 10;           // קלות הכנה
+      if (/משגע|מטריף|חלומי|מושלם|ממכר|נדיר/.test(t)) s += 6;  // תיאור מפתה
+      if (t.length <= 34) s += 8;                              // כותרת קצרה נראית טוב בקולאז'
+      return s;
+    };
+    const ranked = [...recipes].map((r, i) => ({ r, i, s: score(r) }))
+      .filter((x) => x.s >= 0)
+      .sort((a, b) => b.s - a.s);
+    if (ranked.length < n) { setErr(`יש רק ${ranked.length} מתכונים עם תמונה — צריך ${n}.`); return; }
+    setSel(ranked.slice(0, n).map((x) => x.i)); // ממלא את הבחירה — ואפשר לשנות ידנית
+    setErr('');
+  }
+
+  // מוסיף/מוריד מתכון מבחירת הקולאז' (הסדר = סדר הלחיצה)
+  function toggleSel(i: number) {
+    setSel((s) => s.includes(i) ? s.filter((x) => x !== i) : [...s, i]);
+  }
+
   // בונה קולאז' מתמונות המתכונים על גבי canvas בדפדפן (אפס עומס שרת)
-  async function buildCollage(grid: 2 | 3) {
-    const pics = recipes.map((r) => r.image).filter(Boolean).slice(0, grid * grid);
+  // cols×rows: 2×2 / 3×3 / 2×3 (שתי עמודות, שלוש שורות — עם שם על כל תא)
+  async function buildCollage(cols: number, rows: number, labels = false) {
+    const cap = cols * rows;
+    // אם בחרתם ידנית — משתמשים בבחירה ובסדר שלה. אחרת: הראשונים עם תמונה.
+    const idxs = (sel.length ? sel : recipes.map((_, i) => i).filter((i) => recipes[i].image)).slice(0, cap);
+    const pics = idxs.map((i) => recipes[i].image).filter(Boolean);
     if (pics.length < 2) { setErr('צריך לפחות 2 תמונות מתכון (משכו תמונות קודם)'); return; }
+    if (sel.length && sel.length !== cap) { setErr(`בחרתם ${sel.length} תמונות — הפריסה הזו צריכה ${cap}.`); return; }
     setErr(''); setCollageBusy('בונה קולאז׳...');
     try {
-      const S = 1080, cell = S / grid;
+      const S = 1080, cw = S / cols, ch = S / rows;
       const canvas = document.createElement('canvas');
       canvas.width = S; canvas.height = S;
       const ctx = canvas.getContext('2d');
@@ -282,24 +322,48 @@ export default function AdminPage() {
       });
       const imgs = await Promise.all(pics.map(load));
 
+      const named = idxs.map((i) => recipes[i]); // מקביל ל-pics — לשמות התאים
       imgs.forEach((im, i) => {
         if (!im) return;
-        const cx = (i % grid) * cell, cy = Math.floor(i / grid) * cell;
-        // crop "cover" — ממלא את המשבצת בלי עיוות
+        const cx = (i % cols) * cw, cy = Math.floor(i / cols) * ch;
+        // crop "cover" — ממלא את המשבצת בלי עיוות, לפי יחס התא
+        const cellAr = cw / ch, imAr = im.width / im.height;
         let sw = im.width, sh = im.height, sx = 0, sy = 0;
-        if (im.width / im.height > 1) { sw = im.height; sx = (im.width - sw) / 2; }
-        else { sh = im.width; sy = (im.height - sh) / 2; }
-        ctx.drawImage(im, sx, sy, sw, sh, cx, cy, cell, cell);
+        if (imAr > cellAr) { sw = im.height * cellAr; sx = (im.width - sw) / 2; }
+        else { sh = im.width / cellAr; sy = (im.height - sh) / 2; }
+        ctx.drawImage(im, sx, sy, sw, sh, cx, cy, cw, ch);
+
+        // תווית שם המתכון בראש התא (כמו בתמונת הדוגמה)
+        if (labels) {
+          const t = (named[i]?.title || '').trim();
+          if (t) {
+            const lh = Math.round(ch * 0.17);
+            ctx.fillStyle = 'rgba(0,0,0,0.55)';
+            ctx.fillRect(cx, cy, cw, lh);
+            ctx.fillStyle = '#ffffff';
+            ctx.direction = 'rtl'; ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
+            let fs = Math.round(lh * 0.50);
+            ctx.font = `700 ${fs}px system-ui, Arial, sans-serif`;
+            let label = t;
+            while (ctx.measureText(label).width > cw - 22 && fs > 13) {
+              fs -= 1; ctx.font = `700 ${fs}px system-ui, Arial, sans-serif`;
+            }
+            while (ctx.measureText(label).width > cw - 22 && label.length > 6) {
+              label = label.slice(0, -2);
+            }
+            if (label !== t) label = label.trim() + '…';
+            ctx.fillText(label, cx + cw - 11, cy + lh / 2);
+          }
+        }
       });
       // קווי הפרדה עדינים
       ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 6;
-      for (let i = 1; i < grid; i++) {
-        ctx.beginPath(); ctx.moveTo(i * cell, 0); ctx.lineTo(i * cell, S); ctx.stroke();
-        ctx.beginPath(); ctx.moveTo(0, i * cell); ctx.lineTo(S, i * cell); ctx.stroke();
-      }
+      for (let c = 1; c < cols; c++) { ctx.beginPath(); ctx.moveTo(c * cw, 0); ctx.lineTo(c * cw, S); ctx.stroke(); }
+      for (let rw = 1; rw < rows; rw++) { ctx.beginPath(); ctx.moveTo(0, rw * ch); ctx.lineTo(S, rw * ch); ctx.stroke(); }
 
+      // כותרת התפריט בתחתית — רק כשאין תוויות לכל תא (אחרת עמוס)
       const t = (title || '').trim();
-      if (t) {
+      if (t && !labels) {
         const barH = Math.round(S * 0.17);
         ctx.fillStyle = 'rgba(0,0,0,0.60)';
         ctx.fillRect(0, S - barH, S, barH);
@@ -317,6 +381,7 @@ export default function AdminPage() {
     finally { setCollageBusy(''); }
   }
 
+  // שומר את הקולאז' בריפו ומגדיר אותו כתמונת התפריט
   // שומר את הקולאז' בריפו ומגדיר אותו כתמונת התפריט
   async function useCollage() {
     if (!collageUrl) return;
@@ -845,11 +910,32 @@ export default function AdminPage() {
           <div style={{ marginTop: 12, padding: '12px 14px', background: 'var(--bg-soft, #f8fafc)', borderRadius: 12, border: '1px solid var(--line)' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
               <strong style={{ fontSize: 13 }}>🎨 מחולל קולאז׳</strong>
-              <button className="admin-btn sm" type="button" onClick={() => buildCollage(2)} disabled={!!collageBusy}>2×2</button>
-              <button className="admin-btn sm" type="button" onClick={() => buildCollage(3)} disabled={!!collageBusy}>3×3</button>
+              <button className="admin-btn sm" type="button" onClick={() => buildCollage(2, 3, true)} disabled={!!collageBusy}>2×3 + שמות</button>
+              <button className="admin-btn sm" type="button" onClick={() => buildCollage(2, 2)} disabled={!!collageBusy}>2×2</button>
+              <button className="admin-btn sm" type="button" onClick={() => buildCollage(3, 3)} disabled={!!collageBusy}>3×3</button>
+              <button className="admin-btn ghost sm" type="button" onClick={() => pickBest(6)} title="ממלא בחירה לפי ביצועי עבר — ואפשר לשנות ידנית">🎯 הצע 6</button>
               {collageBusy && <span className="admin-busy" style={{ fontSize: 12 }}>{collageBusy}</span>}
             </div>
-            <p className="admin-hint" style={{ marginTop: 6 }}>בונה תמונה ראשית מתמונות המתכונים + הכותרת. נבנה בדפדפן — בלי עומס שרת.</p>
+            <p className="admin-hint" style={{ marginTop: 6 }}>
+              לחצו על תמונות כדי לבחור אותן (הסדר = סדר הלחיצה).
+              {sel.length > 0 && <b style={{ color: 'var(--brand)' }}> נבחרו {sel.length}.</b>}
+              {sel.length === 0 && ' בלי בחירה — ייקח את הראשונים.'}
+            </p>
+            {recipes.some((r) => r.image) && (
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(84px, 1fr))', gap: 6, marginTop: 8 }}>
+                {recipes.map((r, i) => r.image ? (
+                  <button key={i} type="button" onClick={() => toggleSel(i)} title={r.title}
+                    style={{ position: 'relative', padding: 0, border: sel.includes(i) ? '3px solid var(--brand)' : '1px solid var(--line)', borderRadius: 10, overflow: 'hidden', cursor: 'pointer', background: 'none', aspectRatio: '1', opacity: sel.length && !sel.includes(i) ? 0.45 : 1 }}>
+                    <img src={r.image} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+                    {sel.includes(i) && (
+                      <span style={{ position: 'absolute', top: 3, insetInlineEnd: 3, background: 'var(--brand)', color: '#fff', width: 20, height: 20, borderRadius: 999, fontSize: 11, fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{sel.indexOf(i) + 1}</span>
+                    )}
+                  </button>
+                ) : null)}
+              </div>
+            )}
+            {sel.length > 0 && <button className="admin-btn ghost sm" type="button" onClick={() => setSel([])} style={{ marginTop: 8 }}>נקה בחירה</button>}
+
             {collageUrl && (
               <div style={{ marginTop: 10 }}>
                 <img src={collageUrl} alt="" style={{ width: 240, height: 240, borderRadius: 12, objectFit: 'cover', border: '1px solid var(--line)' }} />
