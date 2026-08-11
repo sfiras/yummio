@@ -395,7 +395,12 @@ export default function AdminPage() {
       if (!r.ok || d.error) throw new Error(d.error || 'failed');
       setImage(d.url);
       setCollageUrl('');
-    } catch (e) { setErr(String(e)); }
+      setErr('');
+    } catch (e) {
+      // כשל בהעלאה חייב להיות רועש — אחרת מפרסמים בלי תמונה בלי לשים לב
+      setErr('שמירת התמונה נכשלה: ' + String(e));
+      window.alert('❌ שמירת תמונת הקולאז׳ נכשלה!\n\n' + String(e) + '\n\nהתמונה לא נשמרה. אל תפרסמו לפני שזה נפתר (בדרך כלל: GITHUB_TOKEN פג).');
+    }
     finally { setCollageBusy(''); }
   }
 
@@ -478,7 +483,10 @@ export default function AdminPage() {
         if (/https?:\/\//.test(ln)) break;
         block.unshift(ln);
       }
-      let name = (block[0] || '').replace(/\*/g, '').replace(/^[\s\d#.\)\-–—•*️⃣]+/u, '').trim();
+      let name = (block[0] || '')
+        .replace(/\*/g, '')
+        .replace(/^(?:[0-9]\uFE0F?\u20E3|\u{1F51F}|[\s\d#.)\-\u2013\u2014\u2022*])+/u, '')
+        .trim();
       const desc = block.slice(1).join(' ').replace(/\*/g, '').trim();
       if (!name) name = '(ללא שם)';
       const r = empty();
@@ -514,6 +522,19 @@ export default function AdminPage() {
   }
 
     async function publish(asDraft = false, force = false) {
+    // שכבת הגנה: קולאז' שנבנה אך לא נקבע כתמונת התפריט
+    if (!asDraft && collageUrl && !image.trim()) {
+      if (!window.confirm('⚠️ בניתם קולאז׳ אבל לא לחצתם "קבע כתמונת התפריט".\nבוואטסאפ תוצג תמונת המתכון הראשון.\n\nלפרסם בכל זאת?')) return;
+    }
+    // שכבת הגנה: התמונה מצביעה לקובץ שלא באמת קיים (למשל אם ההעלאה נכשלה)
+    if (!asDraft && image.trim().startsWith('/menu-images/')) {
+      try {
+        const chk = await fetch(image.trim(), { method: 'HEAD', cache: 'no-store' });
+        if (!chk.ok) {
+          if (!window.confirm('⚠️ תמונת התפריט לא נמצאה בשרת (' + chk.status + ').\nייתכן שההעלאה נכשלה. לפרסם בכל זאת?')) return;
+        }
+      } catch { /* בדיקה בלבד — לא חוסמים על שגיאת רשת */ }
+    }
     setErr(''); setResult(null); setCodes([]); setBusy(asDraft ? 'שומר טיוטה...' : 'מפרסם...');
     try {
       const r = await fetch(BP + '/api/publish', {
