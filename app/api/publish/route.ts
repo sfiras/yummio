@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { putFile, getFileRaw } from '@/lib/github';
-import { kvSet } from '@/lib/kv';
+import { kvSet, kvGetStr } from '@/lib/kv';
 import { BP } from '@/lib/base';
 
 export const dynamic = 'force-dynamic';
@@ -91,13 +91,25 @@ export async function POST(req: Request) {
   // קודים קצרים לקישורי וואטסאפ (רק במצב מעקב)
   let codes: string[] = [];
   if (isTracked) {
-    codes = await Promise.all(clean.map(async (r, i) => {
+    // מייצרים קודים קצרים — ורק אם *כל* הכתיבות הצליחו נשתמש בהם.
+    // אם הכתיבה נכשלה (מסד למטה/מכסה) נחזיר [] והלקוח ייפול חזרה ל-/go/ שלא תלוי במסד.
+    const made = await Promise.all(clean.map(async (r, i) => {
       const code = Math.random().toString(36).slice(2, 7);
-      await kvSet(`s:${code}`, JSON.stringify({ u: r.url, m: slug, r: i, s: 'wa' }));
-      return code;
+      const ok = await kvSet(`s:${code}`, JSON.stringify({ u: r.url, m: slug, r: i, s: 'wa' }));
+      return ok ? code : null;
     }));
-    // שומרים את הקודים לפי slug — כך קישורי /s/xxxxx הקצרים זמינים גם אחרי רענון
-    await kvSet(`codes:${slug}`, JSON.stringify(codes));
+    if (made.every((c) => !!c)) {
+      // אימות אמיתי: קוראים קוד אחד בחזרה כדי לוודא שהוא באמת נשמר
+      const probe = await kvGetStr(`s:${made[0]}`);
+      if (probe) {
+        codes = made as string[];
+        await kvSet(`codes:${slug}`, JSON.stringify(codes));
+      } else {
+        console.error('[publish] short codes written but not readable — falling back to /go/');
+      }
+    } else {
+      console.error('[publish] short code write failed — falling back to /go/');
+    }
   }
 
   return NextResponse.json({ ok: true, slug, url: `${BP}/menu/${slug}`, codes, draft: isDraft });
