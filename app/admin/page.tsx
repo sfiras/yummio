@@ -109,6 +109,8 @@ export default function AdminPage() {
   const [iFrom, setIFrom] = useState('');
   const [iTo, setITo] = useState('');
   const [kvOk, setKvOk] = useState<null | boolean>(null);
+  const [migBusy, setMigBusy] = useState(false);
+  const [migMsg, setMigMsg] = useState('');
   const [statsBusy, setStatsBusy] = useState(false);
   const [menuQuery, setMenuQuery] = useState('');
 
@@ -605,6 +607,20 @@ export default function AdminPage() {
     };
   }
 
+  // העברת ההיסטוריה מ-Upstash ל-Turso (חד־פעמי)
+  async function migrateHistory() {
+    if (!window.confirm('להעביר את היסטוריית הקליקים והצפיות מ-Upstash ל-Turso?\n\nבטוח להרצה חוזרת — לא דורס נתונים חדשים יותר.')) return;
+    setMigBusy(true); setMigMsg('מעביר... זה יכול לקחת עד דקה');
+    try {
+      const r = await fetch(BP + '/api/migrate-kv', { method: 'POST', headers: { 'x-admin-pass': pass } });
+      const d = await r.json();
+      if (d.error && !d.report) { setMigMsg('❌ ' + d.error); return; }
+      const rep = d.report || {};
+      setMigMsg(`✅ הועבר: ${rep.counters || 0} מונים, ${rep.strings || 0} קודים · נסרקו ${rep.scanned || 0} · דולגו ${rep.skipped || 0}` + ((rep.errors || []).length ? ` · שגיאות: ${rep.errors.length}` : ''));
+    } catch (e) { setMigMsg('❌ ' + String(e)); }
+    finally { setMigBusy(false); }
+  }
+
   function buildWaMessage(): string {
     const L = waLinks();
     const sh = (u: string) => shortMap[u] || u; // מעדיפים bit.ly אם כבר קוצר
@@ -1090,6 +1106,14 @@ export default function AdminPage() {
             </span>
             <button className="admin-btn ghost sm" onClick={() => loadStats()}>רענן</button>
           </div>
+        </div>
+        <div style={{ margin: '10px 0 14px', padding: '10px 12px', background: '#eff6ff', borderRadius: 12, border: '1px solid #bfdbfe' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+            <strong style={{ fontSize: 13, color: '#1e40af' }}>📦 העברת היסטוריה מ-Upstash</strong>
+            <button className="admin-btn sm" type="button" onClick={migrateHistory} disabled={migBusy}>{migBusy ? 'מעביר...' : 'העבר עכשיו'}</button>
+          </div>
+          {migMsg && <p style={{ fontSize: 12, marginTop: 6, fontWeight: 700 }}>{migMsg}</p>}
+          <p className="admin-hint" style={{ marginTop: 4 }}>חד־פעמי. בטוח להרצה חוזרת. אל תמחקו את Upstash לפני שזה מצליח.</p>
         </div>
         {(() => {
           const S = analytics;
