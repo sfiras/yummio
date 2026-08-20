@@ -88,6 +88,16 @@ export async function kvIncr(key: string): Promise<number> {
   return firstNumber(res[pre.length]);
 }
 
+/** קובע מונה לערך מדויק (לייבוא היסטוריה). לא מגדיל — מציב. */
+export async function kvSetNum(key: string, n: number): Promise<boolean> {
+  const pre = schema();
+  const res = await run([
+    ...pre,
+    { sql: 'INSERT INTO counters (k, n) VALUES (?, ?) ON CONFLICT(k) DO UPDATE SET n = MAX(n, excluded.n)', args: [key, Math.trunc(n)] },
+  ]);
+  return !!res;
+}
+
 /** שומר ערך טקסט (לקודים קצרים). מחזיר false אם נכשל — הקוראים חייבים לבדוק! */
 export async function kvSet(key: string, value: string): Promise<boolean> {
   const pre = schema();
