@@ -22,12 +22,20 @@ export async function GET(req: Request) {
     } catch { /* נייצר מחדש */ }
 
     if (!Array.isArray(codes) || codes.length !== menu.recipes.length) {
-      codes = await Promise.all(menu.recipes.map(async (r, i) => {
+      // מייצרים — ורק אם כל הכתיבות הצליחו והקוד באמת נקרא בחזרה, נחזיר אותם.
+      const made = await Promise.all(menu.recipes.map(async (r, i) => {
         const code = Math.random().toString(36).slice(2, 7);
-        await kvSet(`s:${code}`, JSON.stringify({ u: r.url, m: slug, r: i, s: 'wa' }));
-        return code;
+        const ok = await kvSet(`s:${code}`, JSON.stringify({ u: r.url, m: slug, r: i, s: 'wa' }));
+        return ok ? code : null;
       }));
-      await kvSet(`codes:${slug}`, JSON.stringify(codes));
+      const probe = made[0] ? await kvGetStr(`s:${made[0]}`) : null;
+      if (made.every((c) => !!c) && probe) {
+        codes = made as string[];
+        await kvSet(`codes:${slug}`, JSON.stringify(codes));
+      } else {
+        codes = []; // כשל — הלקוח ייפול חזרה ל-/go/
+        console.error('[menu] short code generation failed — client will use /go/');
+      }
     }
   }
   return NextResponse.json({ menu, codes });
