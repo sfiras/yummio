@@ -109,6 +109,7 @@ export default function AdminPage() {
   const [iFrom, setIFrom] = useState('');
   const [iTo, setITo] = useState('');
   const [kvOk, setKvOk] = useState<null | boolean>(null);
+  const [imgJustUploaded, setImgJustUploaded] = useState(false);
   const [migBusy, setMigBusy] = useState(false);
   const [migMsg, setMigMsg] = useState('');
   const [statsBusy, setStatsBusy] = useState(false);
@@ -408,6 +409,7 @@ export default function AdminPage() {
       const d = await r.json();
       if (!r.ok || d.error) throw new Error(d.error || 'failed');
       setImage(d.url);
+      setImgJustUploaded(true); // הועלתה עכשיו — אין טעם לבדוק HEAD לפני שהפריסה הסתיימה
       setCollageUrl('');
       setErr('');
     } catch (e) {
@@ -419,6 +421,7 @@ export default function AdminPage() {
   }
 
   function resetComposer() {
+    setImgJustUploaded(false);
     setTitle(''); setIntro(''); setImage(''); setRecipes([empty()]); setEditingSlug('');
     setDate(todayISO()); setMessage(1); setBulk(''); setWaText(''); setResult(null); setErr('');
   }
@@ -541,11 +544,11 @@ export default function AdminPage() {
       if (!window.confirm('⚠️ בניתם קולאז׳ אבל לא לחצתם "קבע כתמונת התפריט".\nבוואטסאפ תוצג תמונת המתכון הראשון.\n\nלפרסם בכל זאת?')) return;
     }
     // שכבת הגנה: התמונה מצביעה לקובץ שלא באמת קיים (למשל אם ההעלאה נכשלה)
-    if (!asDraft && image.trim().startsWith('/menu-images/')) {
+    if (!asDraft && !imgJustUploaded && image.trim().startsWith('/menu-images/')) {
       try {
         const chk = await fetch(image.trim(), { method: 'HEAD', cache: 'no-store' });
         if (!chk.ok) {
-          if (!window.confirm('⚠️ תמונת התפריט לא נמצאה בשרת (' + chk.status + ').\nייתכן שההעלאה נכשלה. לפרסם בכל זאת?')) return;
+          if (!window.confirm('⚠️ תמונת התפריט עדיין לא זמינה בשרת (' + chk.status + ').\nאם העליתם אותה זה עתה — Vercel צריך כדקה לפרוס, וזה תקין.\n\nלפרסם?')) return;
         }
       } catch { /* בדיקה בלבד — לא חוסמים על שגיאת רשת */ }
     }
