@@ -589,7 +589,7 @@ export default function AdminPage() {
       menu: `${origin}/menu/${slug}`,
       recipes: list.map((r, i) => !tracked
         ? r.url // מצב "מקורי": קישור bit.ly קיים נשאר כמו שהוא
-        : (sameSlug && codes[i] ? `${origin}/s/${codes[i]}` : `${origin}/go/${slug}/${i}/wa`)),
+        : `${origin}/go/${slug}/${i}/wa`), // תמיד /go/ — קורא מקובץ התפריט, לא תלוי במסד נתונים
     };
   }
 
