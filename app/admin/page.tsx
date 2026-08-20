@@ -108,6 +108,7 @@ export default function AdminPage() {
   const [iWeekday, setIWeekday] = useState<'all' | '0' | '1' | '2' | '3' | '4' | '5' | '6'>('all');
   const [iFrom, setIFrom] = useState('');
   const [iTo, setITo] = useState('');
+  const [kvOk, setKvOk] = useState<null | boolean>(null);
   const [statsBusy, setStatsBusy] = useState(false);
   const [menuQuery, setMenuQuery] = useState('');
 
@@ -147,6 +148,17 @@ export default function AdminPage() {
 
   // טעינת רשימת הקישורים המקוצרים כשנכנסים למסך
   useEffect(() => { if (authed && view === 'links') loadLinks(); if (authed && view === 'stats') loadAnalytics(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [authed, view]);
+
+  // בדיקת בריאות מסד המעקב — נורית ירוקה/אדומה
+  useEffect(() => {
+    if (!authed || view !== 'stats') return;
+    let alive = true;
+    fetch(BP + '/api/health', { cache: 'no-store' })
+      .then((r) => r.json())
+      .then((d) => { if (alive) setKvOk(!!d.ok); })
+      .catch(() => { if (alive) setKvOk(false); });
+    return () => { alive = false; };
+  }, [authed, view]);
 
   // סגירת חלון ההודעה עם Escape
   useEffect(() => {
@@ -1069,7 +1081,15 @@ export default function AdminPage() {
       <>
         <div className="admin-h2-row">
           <h2 className="admin-h2">סטטיסטיקות</h2>
-          <button className="admin-btn ghost sm" onClick={() => loadStats()}>רענן</button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span title={kvOk === null ? 'בודק...' : kvOk ? 'מסד המעקב פעיל' : 'מסד המעקב לא מגיב — קליקים לא נספרים!'}
+              style={{ fontSize: 12, fontWeight: 800, padding: '4px 10px', borderRadius: 999,
+                background: kvOk === null ? 'var(--line)' : kvOk ? '#dcfce7' : '#fee2e2',
+                color: kvOk === null ? 'var(--ink-soft)' : kvOk ? '#166534' : '#991b1b' }}>
+              {kvOk === null ? '⏳ בודק מעקב' : kvOk ? '🟢 מעקב פעיל' : '🔴 מעקב מושבת'}
+            </span>
+            <button className="admin-btn ghost sm" onClick={() => loadStats()}>רענן</button>
+          </div>
         </div>
         {(() => {
           const S = analytics;
