@@ -138,6 +138,72 @@ export async function kvMGet(keys: string[]): Promise<number[]> {
   return keys.map((k) => map[k] || 0);
 }
 
+/** ייבוא בכמות — מונים ומחרוזות בפייפליין אחד. חוסך המון קריאות רשת. */
+export async function kvBulkImport(
+  counters: [string, number][],
+  strings: [string, string][]
+): Promise<boolean> {
+  if (!enabled() || (counters.length === 0 && strings.length === 0)) return true;
+  const stmts: Stmt[] = [
+    ...schema(),
+    ...counters.map(([k, n]) => ({
+      sql: 'INSERT INTO counters (k, n) VALUES (?, ?) ON CONFLICT(k) DO UPDATE SET n = MAX(n, excluded.n)',
+      args: [k, Math.trunc(n)] as Arg[],
+    })),
+    ...strings.map(([k, v]) => ({
+      sql: 'INSERT INTO kvstore (k, v) VALUES (?, ?) ON CONFLICT(k) DO UPDATE SET v = excluded.v',
+      args: [k, v] as Arg[],
+    })),
+  ];
+  return !!(await run(stmts));
+}
+
+/** מגדיל כמה מונים בבת אחת (פייפליין אחד = קריאת רשת אחת) */
+export async function kvIncrMany(keys: string[]): Promise<boolean> {
+  if (!enabled() || keys.length === 0) return true;
+  const stmts: Stmt[] = [
+    ...schema(),
+    ...keys.map((k) => ({
+      sql: 'INSERT INTO counters (k, n) VALUES (?, 1) ON CONFLICT(k) DO UPDATE SET n = n + 1',
+      args: [k] as Arg[],
+    })),
+  ];
+  return !!(await run(stmts));
+}
+
+/** קורא כמה ערכי טקסט בשאילתה אחת */
+export async function kvMGetStr(keys: string[]): Promise<(string | null)[]> {
+  if (!enabled() || keys.length === 0) return keys.map(() => null);
+  const pre = schema();
+  const res = await run([
+    ...pre,
+    { sql: `SELECT k, v FROM kvstore WHERE k IN (${keys.map(() => '?').join(',')})`, args: keys },
+  ]);
+  if (!res) return keys.map(() => null);
+  const rows = (res[pre.length] as { response?: { result?: { rows?: { value?: string }[][] } } })?.response?.result?.rows || [];
+  const map: Record<string, string> = {};
+  for (const row of rows) {
+    const k = row?.[0]?.value;
+    if (k != null) map[String(k)] = String(row?.[1]?.value ?? '');
+  }
+  return keys.map((k) => (k in map ? map[k] : null));
+}
+
+/** מחזיר את כל המונים שהמפתח שלהם מתחיל בתחילית נתונה (לניתוח יומי) */
+export async function kvScanPrefix(prefix: string): Promise<Record<string, number>> {
+  if (!enabled()) return {};
+  const pre = schema();
+  const res = await run([...pre, { sql: 'SELECT k, n FROM counters WHERE k LIKE ?', args: [prefix + '%'] }]);
+  if (!res) return {};
+  const rows = (res[pre.length] as { response?: { result?: { rows?: { value?: string }[][] } } })?.response?.result?.rows || [];
+  const out: Record<string, number> = {};
+  for (const row of rows) {
+    const k = row?.[0]?.value;
+    if (k != null) out[String(k)] = Number(row?.[1]?.value) || 0;
+  }
+  return out;
+}
+
 /** בדיקת בריאות — מחזיר true אם אפשר לכתוב ולקרוא מהמסד */
 export async function kvHealth(): Promise<{ ok: boolean; configured: boolean }> {
   if (!enabled()) return { ok: false, configured: false };
