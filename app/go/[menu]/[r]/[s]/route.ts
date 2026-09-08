@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getMenu } from '@/lib/menus';
-import { kvIncr } from '@/lib/kv';
+import { kvIncrMany } from '@/lib/kv';
 import { ilDay } from '@/lib/day';
 import { isBot } from '@/lib/bots';
 
@@ -22,10 +22,14 @@ export async function GET(
   // סופרים את הקליק רק אם זה לא בוט/סורק (וואטסאפ/פייסבוק וכו') — כדי לא לזהם נתונים
   if (!isBot(req.headers.get('user-agent'))) {
     const day = ilDay();
-    await Promise.all([
-      kvIncr(`c:${params.menu}:${idx}:${src}`),
-      kvIncr(`dc:${day}`),
-      kvIncr(`mc:${params.menu}:${day}`),
+    // קריאת רשת אחת לכל הקליק. cd: = קליקים יומיים לכל מתכון —
+    // זה מה שמאפשר לשייך קליקים לשליחה מסוימת (מקורית מול repost).
+    await kvIncrMany([
+      `c:${params.menu}:${idx}:${src}`,
+      `cd:${params.menu}:${idx}:${day}`,
+      `md:${params.menu}:${day}:${src}`,
+      `dc:${day}`,
+      `mc:${params.menu}:${day}`,
     ]);
   }
 
