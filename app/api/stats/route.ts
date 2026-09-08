@@ -41,7 +41,8 @@ export async function POST(req: Request) {
   const bitlyJobs: { slug: string; idx: number; url: string }[] = [];
   for (const m of menus) {
     m.recipes.forEach((r, i) => {
-      if (/bit\.ly\//i.test(r.url)) bitlyJobs.push({ slug: m.slug, idx: i, url: r.url });
+      const bl = r.sent || r.url;
+      if (/bit\.ly\//i.test(bl)) bitlyJobs.push({ slug: m.slug, idx: i, url: bl });
     });
   }
 
