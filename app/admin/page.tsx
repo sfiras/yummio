@@ -123,6 +123,8 @@ export default function AdminPage() {
   const [imgJustUploaded, setImgJustUploaded] = useState(false);
   const [migBusy, setMigBusy] = useState(false);
   const [camps, setCamps] = useState<CampMenu[]>([]);
+  const [waBusy, setWaBusy] = useState(false);
+  const [waMsg, setWaMsg] = useState('');
   const [campBusy, setCampBusy] = useState(false);
   const [dupes, setDupes] = useState<DupMatch[]>([]);
   const [migMsg, setMigMsg] = useState('');
@@ -628,6 +630,65 @@ export default function AdminPage() {
   }
 
   // העברת ההיסטוריה מ-Upstash ל-Turso (חד־פעמי)
+  // ייבוא היסטוריה מקובץ יצוא של וואטסאפ (_chat.txt).
+  // הקובץ נקרא בדפדפן — נשלחות לשרת רק ההודעות החסרות.
+  async function importWhatsApp(file: File) {
+    setWaBusy(true); setWaMsg('קורא את הקובץ...');
+    try {
+      const text = await file.text();
+      const clean = text.replace(/[\u200e\u200f\u202a\u202c]/g, '');
+      const HDR = /^\[(\d{2})\/(\d{2})\/(\d{4}), (\d{2}):(\d{2}):(\d{2})\] ([^:]+): ?(.*)$/;
+      const LINK = /https?:\/\/[^\s)\]<>"]+/g;
+
+      const msgs: { date: string; who: string; body: string }[] = [];
+      let cur: { date: string; who: string; body: string } | null = null;
+      for (const line of clean.split('\n')) {
+        const m = line.match(HDR);
+        if (m) {
+          if (cur) msgs.push(cur);
+          cur = { date: `${m[3]}-${m[2]}-${m[1]}`, who: m[7].trim(), body: m[8] };
+        } else if (cur) cur.body += '\n' + line;
+      }
+      if (cur) msgs.push(cur);
+
+      const FROM = '2026-07-01';
+      const byDate: Record<string, { date: string; body: string }[]> = {};
+      for (const m of msgs) {
+        if (m.date < FROM) continue;
+        if ((m.body.match(LINK) || []).length < 4) continue;
+        (byDate[m.date] ||= []).push({ date: m.date, body: m.body });
+      }
+
+      setWaMsg('בודק מה כבר קיים...');
+      const have: Record<string, number> = {};
+      for (const m of stats || []) have[m.slug.slice(0, 10)] = (have[m.slug.slice(0, 10)] || 0) + 1;
+
+      const missing: { date: string; body: string }[] = [];
+      for (const dd of Object.keys(byDate).sort()) missing.push(...byDate[dd].slice(have[dd] || 0));
+
+      if (missing.length === 0) { setWaMsg('✅ אין הודעות חסרות — הכל כבר במערכת.'); return; }
+      if (!window.confirm(`נמצאו ${missing.length} הודעות שחסרות במערכת (מ-${FROM}).\n\nלייבא אותן כתפריטים?`)) { setWaMsg(''); return; }
+
+      let done = 0; const createdAll: string[] = []; const failedAll: unknown[] = [];
+      for (let i = 0; i < missing.length; i += 6) {
+        const batch = missing.slice(i, i + 6);
+        setWaMsg(`מייבא ${done + 1}–${done + batch.length} מתוך ${missing.length}...`);
+        const r = await fetch(BP + '/api/import-messages', {
+          method: 'POST', headers: { 'Content-Type': 'application/json', 'x-admin-pass': pass },
+          body: JSON.stringify({ messages: batch }),
+        });
+        const dj = await r.json();
+        if (dj.error) { setWaMsg(`❌ נעצר אחרי ${done}: ${dj.error}`); return; }
+        createdAll.push(...(dj.created || []));
+        failedAll.push(...(dj.failed || []));
+        done += batch.length;
+      }
+      setWaMsg(`✅ יובאו ${createdAll.length} תפריטים` + (failedAll.length ? ` · ${failedAll.length} נכשלו` : '') + '. רעננו עוד דקה כדי לראות אותם.');
+    } catch (e) {
+      setWaMsg('❌ ' + String(e).slice(0, 160));
+    } finally { setWaBusy(false); }
+  }
+
   async function loadCampaigns() {
     setCampBusy(true);
     try {
@@ -1237,6 +1298,19 @@ export default function AdminPage() {
           </div>
           {migMsg && <p style={{ fontSize: 12, marginTop: 6, fontWeight: 700 }}>{migMsg}</p>}
           <p className="admin-hint" style={{ marginTop: 4 }}>חד־פעמי. בטוח להרצה חוזרת. אל תמחקו את Upstash לפני שזה מצליח.</p>
+        </div>
+        <div style={{ margin: '10px 0 14px', padding: '10px 12px', background: '#f0fdf4', borderRadius: 12, border: '1px solid #bbf7d0' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+            <strong style={{ fontSize: 13, color: '#166534' }}>📥 ייבוא הודעות מוואטסאפ</strong>
+            <input type="file" accept=".txt" disabled={waBusy}
+              onChange={(e) => { const f = e.target.files?.[0]; if (f) importWhatsApp(f); e.target.value = ''; }}
+              style={{ fontSize: 12 }} />
+          </div>
+          {waMsg && <p style={{ fontSize: 12, marginTop: 6, fontWeight: 700 }}>{waMsg}</p>}
+          <p className="admin-hint" style={{ marginTop: 4 }}>
+            בוואטסאפ: הקבוצה ← ⋮ ← ייצוא צ׳אט ← ללא מדיה. פותחים את ה-ZIP ובוחרים כאן את _chat.txt.
+            הקובץ נקרא בדפדפן; נשלחות לשרת רק ההודעות שחסרות (מ-1.7.26 והלאה).
+          </p>
         </div>
         {(() => {
           const S = analytics;
