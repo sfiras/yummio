@@ -15,7 +15,11 @@ type StatMenu = {
   waTotal: number; pageTotal: number; bitlyTotal?: number; clicks: number; ctr: number;
   sends?: number; lastSent?: string | null; recipes: StatRecipe[];
 };
-type View = 'overview' | 'publish' | 'menus' | 'stats' | 'insights' | 'links' | 'settings';
+type DupMatch = { slug: string; title: string; date: string; kind: 'exact' | 'near'; score: number; shared: number };
+type Campaign = { n: number; date: string; dateLabel: string; note: string; isRepost: boolean; open: boolean; clicks: number; wa: number; page: number; spark: number[]; top: { title: string; clicks: number } | null };
+type CampMenu = { slug: string; title: string; date: string; dateLabel: string; sendCount: number; single: boolean; campaigns: Campaign[]; tracked: number };
+
+type View = 'overview' | 'publish' | 'menus' | 'stats' | 'insights' | 'campaigns' | 'links' | 'settings';
 
 const empty = (): Recipe => ({ url: '', image: '', title: '', desc: '', time: '', level: '', author: '', msgTitle: '', msgDesc: '' });
 const norm = (r: Partial<Recipe>): Recipe => ({
@@ -38,6 +42,7 @@ const NAV: { id: View; label: string; icon: string }[] = [
   { id: 'menus', label: 'תפריטים', icon: '🗂️' },
   { id: 'stats', label: 'סטטיסטיקות', icon: '📊' },
   { id: 'insights', label: 'תובנות', icon: '🏆' },
+  { id: 'campaigns', label: 'שליחות', icon: '📤' },
   { id: 'links', label: 'קיצור קישורים', icon: '🔗' },
   { id: 'settings', label: 'הגדרות', icon: '⚙️' },
 ];
@@ -111,6 +116,9 @@ export default function AdminPage() {
   const [kvOk, setKvOk] = useState<null | boolean>(null);
   const [imgJustUploaded, setImgJustUploaded] = useState(false);
   const [migBusy, setMigBusy] = useState(false);
+  const [camps, setCamps] = useState<CampMenu[]>([]);
+  const [campBusy, setCampBusy] = useState(false);
+  const [dupes, setDupes] = useState<DupMatch[]>([]);
   const [migMsg, setMigMsg] = useState('');
   const [statsBusy, setStatsBusy] = useState(false);
   const [menuQuery, setMenuQuery] = useState('');
@@ -151,6 +159,8 @@ export default function AdminPage() {
 
   // טעינת רשימת הקישורים המקוצרים כשנכנסים למסך
   useEffect(() => { if (authed && view === 'links') loadLinks(); if (authed && view === 'stats') loadAnalytics(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [authed, view]);
+
+  useEffect(() => { if (authed && view === 'campaigns') loadCampaigns(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [authed, view]);
 
   // בדיקת בריאות מסד המעקב — נורית ירוקה/אדומה
   useEffect(() => {
@@ -612,6 +622,16 @@ export default function AdminPage() {
   }
 
   // העברת ההיסטוריה מ-Upstash ל-Turso (חד־פעמי)
+  async function loadCampaigns() {
+    setCampBusy(true);
+    try {
+      const r = await fetch(BP + '/api/campaigns', { method: 'POST', headers: { 'x-admin-pass': pass, 'Content-Type': 'application/json' }, body: '{}' });
+      const d = await r.json();
+      setCamps(Array.isArray(d.menus) ? d.menus : []);
+    } catch { setCamps([]); }
+    finally { setCampBusy(false); }
+  }
+
   async function migrateHistory() {
     if (!window.confirm('להעביר את היסטוריית הקליקים והצפיות מ-Upstash ל-Turso?\n\nבטוח להרצה חוזרת — לא דורס נתונים חדשים יותר.')) return;
     setMigBusy(true); setMigMsg('מעביר... זה יכול לקחת עד דקה');
@@ -623,6 +643,82 @@ export default function AdminPage() {
       setMigMsg(`✅ הועבר: ${rep.counters || 0} מונים, ${rep.strings || 0} קודים · נסרקו ${rep.scanned || 0} · דולגו ${rep.skipped || 0}` + ((rep.errors || []).length ? ` · שגיאות: ${rep.errors.length}` : ''));
     } catch (e) { setMigMsg('❌ ' + String(e)); }
     finally { setMigBusy(false); }
+  }
+
+  // בודק אם קבוצת המתכונים הזאת כבר פורסמה בעבר.
+  // ההשוואה היא על *כל* קבוצת המתכונים — לא על מתכון בודד (אותו מתכון מופיע בהרבה הודעות),
+  // ולא על הפתיח (שינוי קטן בפתיח לא אמור להיחשב הודעה חדשה).
+  async function checkDuplicates(silent = false) {
+    const urls = recipes.map((r) => r.url).filter(Boolean);
+    if (urls.length < 2) { setDupes([]); return []; }
+    try {
+      const r = await fetch(BP + '/api/duplicates', {
+        method: 'POST', headers: { 'Content-Type': 'application/json', 'x-admin-pass': pass },
+        body: JSON.stringify({ urls, excludeSlug: editingSlug || '' }),
+      });
+      const dd = await r.json();
+      const list: DupMatch[] = Array.isArray(dd.matches) ? dd.matches : [];
+      setDupes(list);
+      if (!silent && list.length === 0) window.alert('✅ קבוצת המתכונים הזאת לא פורסמה בעבר.');
+      return list;
+    } catch { setDupes([]); return []; }
+  }
+
+  function renderCampaigns() {
+    const reposted = camps.filter((m) => m.sendCount > 1);
+    const once = camps.filter((m) => m.sendCount <= 1);
+    return (
+      <section className="admin-card">
+        <div className="admin-h2-row">
+          <h2 className="admin-h2">שליחות (הפרדת repost)</h2>
+          <button className="admin-btn ghost sm" onClick={loadCampaigns} disabled={campBusy}>{campBusy ? '...' : 'רענן'}</button>
+        </div>
+        <p className="admin-hint" style={{ marginBottom: 12 }}>
+          הודעה שנשלחה פעם אחת — נספרת כרגיל, בלי הגבלה ובלי סוף.
+          הודעה שנשלחה שוב — כל שליחה מקבלת מספר נפרד, והחלון של הקודמת נסגר ביום השליחה החדשה.
+        </p>
+
+        {reposted.length === 0 && !campBusy && <p className="admin-hint">אין עדיין הודעות שנשלחו יותר מפעם אחת.</p>}
+
+        {reposted.map((m) => (
+          <div key={m.slug} style={{ border: '1px solid var(--line)', borderRadius: 12, padding: 12, marginBottom: 12 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap' }}>
+              <strong style={{ fontSize: 14 }}>{m.title}</strong>
+              <span className="admin-hint">{m.dateLabel} · {m.sendCount} שליחות · {m.tracked} קליקים</span>
+            </div>
+            <table className="admin-table" style={{ marginTop: 8 }}>
+              <thead><tr><th>#</th><th>תאריך</th><th>סוג</th><th>קליקים</th><th>וואטסאפ</th><th>עמוד</th><th>המוביל</th></tr></thead>
+              <tbody>
+                {m.campaigns.map((c) => (
+                  <tr key={c.n}>
+                    <td>{c.n}</td>
+                    <td>{c.dateLabel}</td>
+                    <td>{c.isRepost ? '🔁 חוזרת' : '🚀 מקורית'}{c.open ? ' · פתוח' : ''}</td>
+                    <td><strong>{c.clicks}</strong></td>
+                    <td>{c.wa}</td>
+                    <td>{c.page}</td>
+                    <td style={{ fontSize: 12 }}>{c.top ? c.top.title + ' (' + c.top.clicks + ')' : '—'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ))}
+
+        {once.length > 0 && (
+          <details style={{ marginTop: 10 }}>
+            <summary className="admin-hint" style={{ cursor: 'pointer' }}>הודעות שנשלחו פעם אחת ({once.length}) — נספרות כרגיל</summary>
+            <table className="admin-table" style={{ marginTop: 8 }}>
+              <tbody>
+                {once.map((m) => (
+                  <tr key={m.slug}><td>{m.dateLabel}</td><td>{m.title}</td><td><strong>{m.tracked}</strong></td></tr>
+                ))}
+              </tbody>
+            </table>
+          </details>
+        )}
+      </section>
+    );
   }
 
   function buildWaMessage(): string {
@@ -740,6 +836,7 @@ export default function AdminPage() {
           {view === 'menus' && renderMenus()}
           {view === 'stats' && renderStats()}
           {view === 'insights' && renderInsights()}
+          {view === 'campaigns' && renderCampaigns()}
           {view === 'links' && renderLinks()}
           {view === 'settings' && renderSettings()}
         </div>
