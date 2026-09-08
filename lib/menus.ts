@@ -9,6 +9,7 @@ export type Recipe = {
   time: string;     // זמן הכנה, למשל "15 דק׳"
   level: string;    // רמת קושי (אופציונלי) — מוצג רק אם מולא
   author?: string;  // שם בעל המתכון (אופציונלי)
+  sent?: string;    // הקישור המקוצר ששלחנו בפועל (bit.ly) — לסטטיסטיקה היסטורית
 };
 
 export type Menu = {
@@ -21,6 +22,7 @@ export type Menu = {
   tracked?: boolean; // false = שמירת קישורים מקוריים ללא מעקב (ברירת מחדל: true)
   draft?: boolean;   // true = טיוטה: נגישה בקישור לתצוגה מקדימה, אך noindex ולא מופיעה בבית/ניווט
   waText?: string;   // הודעת הוואטסאפ ששויכה לעמוד (מוצגת בכפתור בלוח הניהול)
+  imported?: boolean; // יובא מהיסטוריית וואטסאפ (קליקים נספרו ב-Bitly)
   recipes: Recipe[];
 };
 
