@@ -76,6 +76,64 @@ export async function putFileBase64(path: string, base64Content: string, message
 }
 
 /** מחזיר את תוכן הקובץ כמחרוזת גולמית (UTF-8), או null אם לא קיים */
+/**
+ * כותב כמה קבצים ב-commit אחד (Git Data API): blobs -> tree -> commit -> ref.
+ * חשוב: כל putFile יוצר commit נפרד ולכן פריסה נפרדת ב-Vercel.
+ * בייבוא המוני זה מגיע למגבלת הפריסות — לכן כאן הכל נכנס בפעימה אחת.
+ */
+export async function putFilesBatch(
+  files: { path: string; content: string }[],
+  message: string
+): Promise<{ ok: boolean; sha?: string; error?: string }> {
+  if (files.length === 0) return { ok: true };
+  const token = process.env.GITHUB_TOKEN;
+  if (!token) return { ok: false, error: 'missing GITHUB_TOKEN' };
+  const branch = process.env.GITHUB_BRANCH || 'main';
+  const base = `${API}/repos/${repo()}`;
+
+  const gh = async (path: string, opts: RequestInit = {}) => {
+    const r = await fetchGH(`${base}${path}`, {
+      ...opts,
+      headers: { ...authHeaders(token), 'Content-Type': 'application/json' },
+      cache: 'no-store',
+    });
+    const t = await r.text();
+    if (!r.ok) throw new Error(`${path} ${r.status}: ${t.slice(0, 140)}`);
+    return JSON.parse(t);
+  };
+
+  try {
+    const ref = await gh(`/git/ref/heads/${branch}`);
+    const baseSha: string = ref.object.sha;
+    const baseCommit = await gh(`/git/commits/${baseSha}`);
+
+    const tree = [];
+    for (const f of files) {
+      const b = await gh('/git/blobs', {
+        method: 'POST',
+        body: JSON.stringify({ content: f.content, encoding: 'utf-8' }),
+      });
+      tree.push({ path: f.path, mode: '100644', type: 'blob', sha: b.sha });
+    }
+
+    const newTree = await gh('/git/trees', {
+      method: 'POST',
+      body: JSON.stringify({ base_tree: baseCommit.tree.sha, tree }),
+    });
+    const commit = await gh('/git/commits', {
+      method: 'POST',
+      body: JSON.stringify({ message, tree: newTree.sha, parents: [baseSha] }),
+    });
+    await gh(`/git/refs/heads/${branch}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ sha: commit.sha }),
+    });
+    return { ok: true, sha: commit.sha };
+  } catch (e) {
+    return { ok: false, error: String(e).slice(0, 200) };
+  }
+}
+
 export async function getFileRaw(path: string): Promise<string | null> {
   const token = process.env.GITHUB_TOKEN;
   if (!token) return null;
