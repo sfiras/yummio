@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { kvGetStr, kvIncr } from '@/lib/kv';
+import { kvGetStr, kvIncrMany } from '@/lib/kv';
 import { ilDay } from '@/lib/day';
 import { isBot } from '@/lib/bots';
 
@@ -24,9 +24,15 @@ export async function GET(req: Request, { params }: { params: { code: string } }
   if (!isBot(req.headers.get('user-agent'))) {
     const day = ilDay();
     if (isRecipe) {
-      await Promise.all([kvIncr(`c:${d.m}:${d.r}:${src}`), kvIncr(`dc:${day}`), kvIncr(`mc:${d.m}:${day}`)]);
+      await kvIncrMany([
+        `c:${d.m}:${d.r}:${src}`,
+        `cd:${d.m}:${d.r}:${day}`,
+        `md:${d.m}:${day}:${src}`,
+        `dc:${day}`,
+        `mc:${d.m}:${day}`,
+      ]);
     } else {
-      await Promise.all([kvIncr(`lc:${params.code}:${src}`), kvIncr(`dc:${day}`)]);
+      await kvIncrMany([`lc:${params.code}:${src}`, `ld:${params.code}:${day}`, `dc:${day}`]);
     }
   }
 
