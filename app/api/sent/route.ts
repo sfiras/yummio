@@ -1,6 +1,15 @@
 import { NextResponse } from 'next/server';
 import { kvIncr, kvSet, kvGetStr } from '@/lib/kv';
 import { ilDay } from '@/lib/day';
+import { getMenu } from '@/lib/menus';
+
+/** חתימה קצרה לטקסט — כדי לזהות אם הפתיח שונה בין שליחה לשליחה */
+function hashText(t: string): string {
+  const s = (t || '').replace(/\s+/g, ' ').trim();
+  let h = 0x811c9dc5;
+  for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 0x01000193) >>> 0; }
+  return h.toString(36);
+}
 
 export const dynamic = 'force-dynamic';
 
@@ -25,10 +34,14 @@ export async function POST(req: Request) {
   const day = /^\d{4}-\d{2}-\d{2}$/.test(dateOverride) ? dateOverride : ilDay();
 
   // רשימת השליחות — מיון עולה, בלי כפילויות באותו יום
-  let sends: { d: string; note?: string }[] = [];
+  // בצמת הפתיח הנוכחי — כך נדע אם השליחה החוזרת הייתה עם טקסט ששונה
+  const menu = getMenu(slug);
+  const h = hashText([menu?.title, menu?.intro].filter(Boolean).join('\n'));
+
+  let sends: { d: string; note?: string; h?: string }[] = [];
   try { sends = JSON.parse((await kvGetStr(`sends:${slug}`)) || '[]'); } catch { sends = []; }
   if (!sends.some((s) => s.d === day)) {
-    sends.push({ d: day, ...(note ? { note } : {}) });
+    sends.push({ d: day, h, ...(note ? { note } : {}) });
     sends.sort((a, b) => a.d.localeCompare(b.d));
     await kvSet(`sends:${slug}`, JSON.stringify(sends));
   }
@@ -42,7 +55,7 @@ export async function POST(req: Request) {
 export async function GET(req: Request) {
   const slug = new URL(req.url).searchParams.get('slug') || '';
   if (!slug) return NextResponse.json({ error: 'no slug' }, { status: 400 });
-  let sends: { d: string; note?: string }[] = [];
+  let sends: { d: string; note?: string; h?: string }[] = [];
   try { sends = JSON.parse((await kvGetStr(`sends:${slug}`)) || '[]'); } catch { /* */ }
   return NextResponse.json({ slug, sends });
 }
