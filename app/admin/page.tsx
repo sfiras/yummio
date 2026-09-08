@@ -9,7 +9,13 @@ type Recipe = {
   author: string; msgTitle: string; msgDesc: string;
 };
 type StatRecipe = { i: number; title: string; url?: string; image?: string; wa: number; page: number; bitly?: number; total: number };
+type SendEntry = { d: string; note?: string; h?: string };
 type StatMenu = {
+  sendLog?: SendEntry[];
+  repostCount?: number;
+  daysSince?: number | null;
+  canRepost?: boolean;
+  modified?: boolean;
   slug: string; title: string; dateLabel: string; message: number; draft?: boolean; waText?: string;
   views: number; viewsWa?: number; viewsInternal?: number; viewsOther?: number;
   waTotal: number; pageTotal: number; bitlyTotal?: number; clicks: number; ctr: number;
@@ -992,6 +998,22 @@ export default function AdminPage() {
           <div className="menu-row-title">
             <strong>{m.title}</strong>
             {m.draft && <span style={{ marginInlineStart: 6, padding: '1px 8px', borderRadius: 8, background: '#fef3c7', color: '#92400e', fontSize: 12, fontWeight: 800 }}>טיוטה</span>}
+            {(m.repostCount || 0) > 0 && (
+              <span
+                title={'נשלח ' + ((m.repostCount || 0) + 1) + ' פעמים · אחרונה: ' + (m.lastSent || '')}
+                style={{ marginInlineStart: 6, padding: '1px 8px', borderRadius: 8, fontSize: 12, fontWeight: 800,
+                  background: m.modified ? '#ede9fe' : '#dbeafe', color: m.modified ? '#5b21b6' : '#1e40af' }}>
+                {m.modified ? '🔁 ריפוסט חדש' : '🔁 ריפוסט'} ×{m.repostCount}
+              </span>
+            )}
+            {m.daysSince != null && (
+              <span
+                title={m.canRepost ? 'עברו 30+ יום — אפשר לשלוח שוב' : 'רק ' + m.daysSince + ' ימים מהשליחה האחרונה'}
+                style={{ marginInlineStart: 6, padding: '1px 8px', borderRadius: 8, fontSize: 11, fontWeight: 800,
+                  background: m.canRepost ? '#dcfce7' : '#f1f5f9', color: m.canRepost ? '#166534' : 'var(--ink-soft)' }}>
+                {m.canRepost ? '✅ מוכן לריפוסט · ' + m.daysSince + ' ימים' : '⏳ ' + m.daysSince + ' ימים'}
+              </span>
+            )}
             <span className="admin-hint"> · {m.dateLabel} · הודעה {m.message}</span>
           </div>
           <div className="menu-kpi-line">
