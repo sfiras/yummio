@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getAllMenus, formatHebrewDate } from '@/lib/menus';
-import { kvMGet, kvGetStr } from '@/lib/kv';
+import { kvMGet, kvGetStr, kvMGetStr } from '@/lib/kv';
 import { lastDays } from '@/lib/day';
 
 export const dynamic = 'force-dynamic';
@@ -47,11 +47,17 @@ export async function POST(req: Request) {
   }
 
   // שתי שליפות במקביל: KV + Bitly
-  const [vals, lasts, bitlyResults] = await Promise.all([
+  const [vals, lasts, sendLogs, bitlyResults] = await Promise.all([
     kvMGet(keys),
     Promise.all(menus.map((m) => kvGetStr(`sl:${m.slug}`))),
+    kvMGetStr(menus.map((m) => `sends:${m.slug}`)),
     Promise.allSettled(bitlyJobs.map((j) => fetchBitlyClicks(j.url))),
   ]);
+
+  // יומן שליחות לכל תפריט — הבסיס לשדות ה-repost
+  const today = new Date();
+  const daysBetween = (a: string) =>
+    Math.floor((today.getTime() - new Date(a + 'T12:00:00Z').getTime()) / 86400000);
 
   // מפה: "slug:idx" → קליקי bit.ly
   const bitlyMap: Record<string, number> = {};
@@ -95,6 +101,21 @@ export async function POST(req: Request) {
       ctr: views ? Math.round((pageTotal / views) * 100) : 0,
       sends,
       lastSent: lasts[mi],
+      ...(() => {
+        let log: { d: string; note?: string; h?: string }[] = [];
+        try { log = JSON.parse(sendLogs[mi] || '[]'); } catch { /* */ }
+        if (log.length === 0) return { sendLog: [], repostCount: 0, daysSince: null, canRepost: false, modified: false };
+        const last = log[log.length - 1];
+        const prev = log[log.length - 2];
+        const daysSince = daysBetween(last.d);
+        return {
+          sendLog: log,
+          repostCount: log.length - 1,
+          daysSince,
+          canRepost: daysSince >= 30,
+          modified: !!(prev && last.h && prev.h && last.h !== prev.h),
+        };
+      })(),
       recipes,
     };
   });
