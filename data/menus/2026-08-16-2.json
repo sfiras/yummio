@@ -1,0 +1,73 @@
+{
+  "date": "2026-08-16",
+  "message": 2,
+  "title": "מתכון אחד, שלוש עוגות. נשמע טוב מדי? חכי שתראי את השאר…",
+  "intro": "📩 אהבת את זה? שלחי לחברה אחת שגם תאהב 🧁\n🍰 קינוחים שווים",
+  "image": "",
+  "tracked": false,
+  "imported": true,
+  "draft": false,
+  "waText": "מתכון אחד, שלוש עוגות. נשמע טוב מדי? חכי שתראי את השאר…\n\n*לצפייה בתפריט המלא כאן* >>\nhttps://bit.ly/4wKSV9x\n\n📩 אהבת את זה? שלחי לחברה אחת שגם תאהב 🧁\nhttps://chat.whatsapp.com/KJf4bPF5RoCJBaVEQgmuEl\n\n🍰 קינוחים שווים\n1️⃣ *3 עוגות בחושות שונות ממתכון קל אחד*\nבפחות מ־5 דקות של עבודה!\nhttps://bit.ly/4y5ZULp\n\n2️⃣ *מתכון סברינה מיני בקלי קלות*\nמתכון קל לסברינה מיני שתשגע את האורחים!\nhttps://bit.ly/4bsGuqn\n\n🐟 מנות עיקריות שיגרמו לכולם לבקש תוספת:\n3️⃣ *סלמון בתנור ברוטב עשבי תיבול משגע*\nמתכון קל ומהיר לסלמון עשיר ועסיסי\nhttps://bit.ly/3RgoSHu\n\n4️⃣ *עראיס עסיסי וקל להכנה*\nמתי בפעם האחרונה אכלת עראייס טוב?\nhttps://bit.ly/4xVoqyO\n\n🥔 תוספות סופר קלות – מושלמות לצהריים או ערב:\n5️⃣ *צ'יפס מתנפח ביתי*\nמי כמוני אוהבת צ'יפס מתנפח כמו בפלאפליות?\nhttps://bit.ly/4vhiYE2\n\n6️⃣ *סלט כרוב לבן חגיגי עם פיצוחים*\nתעופו על הסלט הזה!!\nhttps://bit.ly/4vOh92v\n\n✨ *אהבת את המתכונים?*\n📩 שמרי, נסי, ואל תשכחי להעביר לחברה שגם תאהב – כי טעים זה משהו שמחלקים באהבה!\nhttps://chat.whatsapp.com/KJf4bPF5RoCJBaVEQgmuEl\r",
+  "recipes": [
+    {
+      "image": "",
+      "title": "3 עוגות בחושות שונות ממתכון קל אחד",
+      "desc": "בפחות מ־5 דקות של עבודה!",
+      "url": "https://bit.ly/4y5ZULp",
+      "sent": "https://bit.ly/4y5ZULp",
+      "time": "",
+      "level": "",
+      "author": ""
+    },
+    {
+      "image": "",
+      "title": "מתכון סברינה מיני בקלי קלות",
+      "desc": "מתכון קל לסברינה מיני שתשגע את האורחים!",
+      "url": "https://bit.ly/4bsGuqn",
+      "sent": "https://bit.ly/4bsGuqn",
+      "time": "",
+      "level": "",
+      "author": ""
+    },
+    {
+      "image": "",
+      "title": "סלמון בתנור ברוטב עשבי תיבול משגע",
+      "desc": "מתכון קל ומהיר לסלמון עשיר ועסיסי",
+      "url": "https://bit.ly/3RgoSHu",
+      "sent": "https://bit.ly/3RgoSHu",
+      "time": "",
+      "level": "",
+      "author": ""
+    },
+    {
+      "image": "",
+      "title": "עראיס עסיסי וקל להכנה",
+      "desc": "מתי בפעם האחרונה אכלת עראייס טוב?",
+      "url": "https://bit.ly/4xVoqyO",
+      "sent": "https://bit.ly/4xVoqyO",
+      "time": "",
+      "level": "",
+      "author": ""
+    },
+    {
+      "image": "",
+      "title": "צ'יפס מתנפח ביתי",
+      "desc": "מי כמוני אוהבת צ'יפס מתנפח כמו בפלאפליות?",
+      "url": "https://bit.ly/4vhiYE2",
+      "sent": "https://bit.ly/4vhiYE2",
+      "time": "",
+      "level": "",
+      "author": ""
+    },
+    {
+      "image": "",
+      "title": "סלט כרוב לבן חגיגי עם פיצוחים",
+      "desc": "תעופו על הסלט הזה!!",
+      "url": "https://bit.ly/4vOh92v",
+      "sent": "https://bit.ly/4vOh92v",
+      "time": "",
+      "level": "",
+      "author": ""
+    }
+  ]
+}
