@@ -23,7 +23,7 @@ const LINK_RE = /https?:\/\/[^\s)\]<>"]+/g;
 const NUM_RE = /^(?:[0-9]️?⃣|\u{1F51F}|\d{1,2}[.)])\s*/u;
 
 /** מפרק הודעת וואטסאפ למבנה: כותרת, פתיח, ורשימת מתכונים ממוספרים */
-export function parseMessage(body: string): Parsed {
+function parseMessage(body: string): Parsed {
   const lines = body.replace(/\r/g, '').split('\n');
   const items: Parsed['items'] = [];
   let menuLink = '';
