@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { putFile, getFileRaw } from '@/lib/github';
+import { putFilesBatch, getFileRaw } from '@/lib/github';
 import { kvSet, kvGetStr, kvSetNum } from '@/lib/kv';
 
 export const dynamic = 'force-dynamic';
@@ -104,6 +104,8 @@ export async function POST(req: Request) {
   const created: string[] = [];
   const skipped: { slug: string; why: string }[] = [];
   const failed: { date: string; why: string }[] = [];
+  const pending: { path: string; content: string }[] = [];
+  const taken = new Set<string>();
 
   for (const msg of messages) {
     try {
@@ -114,7 +116,7 @@ export async function POST(req: Request) {
       let n = 1, slug = '';
       for (; n <= 9; n++) {
         slug = `${msg.date}-${n}`;
-        if (!(await getFileRaw(`data/menus/${slug}.json`))) break;
+        if (!taken.has(slug) && !(await getFileRaw(`data/menus/${slug}.json`))) break;
       }
       if (n > 9) { skipped.push({ slug: `${msg.date}-?`, why: 'כל המקומות תפוסים' }); continue; }
 
@@ -146,8 +148,8 @@ export async function POST(req: Request) {
       };
 
       if (!dryRun) {
-        await putFile(`data/menus/${slug}.json`, JSON.stringify(menu, null, 2) + '\n',
-          `import: ${slug} from WhatsApp history`);
+        pending.push({ path: `data/menus/${slug}.json`, content: JSON.stringify(menu, null, 2) + '\n' });
+        taken.add(slug);
         // רישום השליחה
         let sends: { d: string; note?: string }[] = [];
         try { sends = JSON.parse((await kvGetStr(`sends:${slug}`)) || '[]'); } catch { /* */ }
@@ -165,5 +167,12 @@ export async function POST(req: Request) {
     }
   }
 
-  return NextResponse.json({ ok: true, dryRun, created, skipped, failed });
+  // כל התפריטים נכתבים ב-commit אחד — פריסה אחת במקום אחת לכל תפריט
+  let commit: { ok: boolean; sha?: string; error?: string } = { ok: true };
+  if (!dryRun && pending.length > 0) {
+    commit = await putFilesBatch(pending, `import: ${pending.length} menus from WhatsApp history`);
+    if (!commit.ok) return NextResponse.json({ ok: false, error: commit.error, created: [], failed }, { status: 500 });
+  }
+
+  return NextResponse.json({ ok: true, dryRun, committed: commit.sha || null, created, skipped, failed });
 }
