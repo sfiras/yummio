@@ -1,0 +1,84 @@
+{
+  "date": "2026-10-04",
+  "message": 2,
+  "title": "יש לנו תפריט שלם של להיטים! מנה עיקרית? קינוח מושלם? או פשוט הכול? 🤤",
+  "intro": "",
+  "image": "",
+  "tracked": true,
+  "draft": false,
+  "waText": "יש לנו תפריט שלם של להיטים! מנה עיקרית? קינוח מושלם? או פשוט הכול? 🤤  \n\n🥡 מה בא לכם להכין היום? 🥡\n\n1️⃣ *פיצה במחבת*\nסופר מהירה ללא התפחה\nhttps://bit.ly/4rI36cj\n\n2️⃣ *קציצות דגים*\nעסיסיות ברוטב אדום פיקנטי\nhttps://bit.ly/3Msuax0\n\n3️⃣ *פילה אמנון מטוגן*\nהכי טעים וקל להכנה\nhttps://bit.ly/4aDLRmF\n\n4️⃣ *לחמניות*\nרכות ומטריפות לכריכים\nhttps://bit.ly/4qw4KwK\n\nאם זה עזר לך ב־1%, שתפי את הקבוצה 🤍\nhttps://chat.whatsapp.com/BYqByCm8UvX4ovo6pj3Wxz\n\n*--מתוקים--*\n5️⃣ *עוגת קפה קוקוס*\nעם שבבי שוקולד מעל\nhttps://bit.ly/4c5w3uj\n\n6️⃣ *עוגת כדורי שוקולד*\nעם שכבת קרם וניל קטיפתית\nhttps://bit.ly/3O7JKyU\n\n7️⃣ *עוגת גבינה שיש*\nשילוב מנצח במתכון אחד\nhttps://bit.ly/45Y2cA3\n\n8️⃣ *עוגת גבינה מנומרת*\nבגובה משוגע לגמרי, כנסו 👇\nhttps://bit.ly/4aI9GJW\n\nאם זה עזר לך ב־1%, שתפי את הקבוצה עם חברות 🤍\nhttps://chat.whatsapp.com/BYqByCm8UvX4ovo6pj3Wxz",
+  "recipes": [
+    {
+      "image": "https://yummio.co.il/wp-content/uploads/2024/08/פיצה-במחבת-מ-3-מצרכים-אורה-ארגוב-43.jpg",
+      "title": "פיצה במחבת",
+      "desc": "סופר מהירה ללא התפחה",
+      "url": "https://yummio.co.il/%D7%A4%D7%99%D7%A6%D7%94-%D7%91%D7%9E%D7%97%D7%91%D7%AA-%D7%91%D7%A7%D7%9C%D7%95%D7%AA-%D7%9C%D7%9C%D7%90-%D7%94%D7%AA%D7%A4%D7%97%D7%94/",
+      "time": "",
+      "level": "",
+      "author": "אורה ארגוב"
+    },
+    {
+      "image": "https://yummio.co.il/wp-content/uploads/2024/08/קציצות-דגים.jpg",
+      "title": "קציצות דגים",
+      "desc": "עסיסיות ברוטב אדום פיקנטי",
+      "url": "https://yummio.co.il/%D7%A7%D7%A6%D7%99%D7%A6%D7%95%D7%AA-%D7%93%D7%92%D7%99%D7%9D-%D7%91%D7%A8%D7%95%D7%98%D7%91-%D7%90%D7%93%D7%95%D7%9D-%D7%9E%D7%A9%D7%92%D7%A2/",
+      "time": "",
+      "level": "",
+      "author": "מירי אבוחצירה"
+    },
+    {
+      "image": "https://yummio.co.il/wp-content/uploads/2024/08/דג-מטוגן-במרינדהORIGINAL43.jpg",
+      "title": "פילה אמנון מטוגן",
+      "desc": "הכי טעים וקל להכנה",
+      "url": "https://yummio.co.il/%D7%93%D7%92-%D7%90%D7%9E%D7%A0%D7%95%D7%9F-%D7%9E%D7%98%D7%95%D7%92%D7%9F-%D7%91%D7%9E%D7%A8%D7%99%D7%A0%D7%93%D7%94-%D7%9E%D7%95%D7%A9%D7%9C%D7%9E%D7%AA/",
+      "time": "",
+      "level": "",
+      "author": "נועם זיגדון"
+    },
+    {
+      "image": "https://yummio.co.il/wp-content/uploads/2024/08/לחם-לשישי-ORIGINA43.jpg",
+      "title": "לחמניות",
+      "desc": "רכות ומטריפות לכריכים",
+      "url": "https://yummio.co.il/%D7%9C%D7%97%D7%9D-%D7%91%D7%99%D7%AA-%D7%97%D7%9C%D7%95%D7%9E%D7%99-%D7%91%D7%A8%D7%9B%D7%95%D7%AA-%D7%9E%D7%98%D7%A8%D7%99%D7%A4%D7%94/",
+      "time": "",
+      "level": "",
+      "author": "נועם זיגדון"
+    },
+    {
+      "image": "https://yummio.co.il/wp-content/uploads/2024/08/43-11.jpg",
+      "title": "מתוקים--",
+      "desc": "5️⃣ עוגת קפה קוקוס עם שבבי שוקולד מעל",
+      "url": "https://yummio.co.il/%D7%A2%D7%95%D7%92%D7%AA-%D7%A7%D7%A4%D7%94-%D7%A9%D7%95%D7%A7%D7%95%D7%9C%D7%93-%D7%95%D7%A7%D7%95%D7%A7%D7%95%D7%A1-%D7%9E%D7%98%D7%A8%D7%99%D7%A4%D7%94/",
+      "time": "",
+      "level": "",
+      "author": "נעמי שושן"
+    },
+    {
+      "image": "https://yummio.co.il/wp-content/uploads/2024/08/עוגת-כדורי-שוקולד.jpg",
+      "title": "עוגת כדורי שוקולד",
+      "desc": "עם שכבת קרם וניל קטיפתית",
+      "url": "https://yummio.co.il/%D7%A2%D7%95%D7%92%D7%AA-%D7%9B%D7%93%D7%95%D7%A8%D7%99-%D7%A9%D7%95%D7%A7%D7%95%D7%9C%D7%93-%D7%95%D7%A7%D7%A8%D7%9D-%D7%95%D7%A0%D7%99%D7%9C/",
+      "time": "",
+      "level": "",
+      "author": "לי ביטון"
+    },
+    {
+      "image": "https://yummio.co.il/wp-content/uploads/2024/08/עוגת-גבינה-שיש-ORIGINAL1434.jpg",
+      "title": "עוגת גבינה שיש",
+      "desc": "שילוב מנצח במתכון אחד",
+      "url": "https://yummio.co.il/%D7%A2%D7%95%D7%92%D7%AA-%D7%92%D7%91%D7%99%D7%A0%D7%94-%D7%A9%D7%99%D7%A9-%D7%94%D7%9B%D7%99-%D7%A7%D7%9C%D7%94-%D7%95%D7%98%D7%A2%D7%99%D7%9E%D7%94-%D7%A9%D7%99%D7%A9/",
+      "time": "",
+      "level": "",
+      "author": "אתי בן שמעון"
+    },
+    {
+      "image": "https://yummio.co.il/wp-content/uploads/2024/08/עוגת-גבינה-מנומרת-דליה-סיני43.jpg",
+      "title": "עוגת גבינה מנומרת",
+      "desc": "בגובה משוגע לגמרי, כנסו 👇",
+      "url": "https://yummio.co.il/%D7%A2%D7%95%D7%92%D7%AA-%D7%92%D7%91%D7%99%D7%A0%D7%94-%D7%9E%D7%A0%D7%95%D7%9E%D7%A8%D7%AA-%D7%92%D7%91%D7%95%D7%94%D7%94-%D7%95%D7%A8%D7%9B%D7%94/",
+      "time": "",
+      "level": "",
+      "author": "דליה סיני"
+    }
+  ]
+}
