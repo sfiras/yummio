@@ -114,6 +114,8 @@ export default function AdminPage() {
   const [sel, setSel] = useState<number[]>([]);
   const [collageBusy, setCollageBusy] = useState('');
   const [collageUrl, setCollageUrl] = useState('');
+  const [collageSize, setCollageSize] = useState(0);   // KB של הקולאז' שנוצר
+  const [collageQ, setCollageQ] = useState(0);         // איכות ה-JPEG שנבחרה בפועל
   const [statMode, setStatMode] = useState<'classic' | 'split'>('classic');
   const [iRange, setIRange] = useState<'lastWeek' | 'lastMonth' | 'last2m' | 'thisYear' | 'lastYear' | 'custom'>('lastMonth');
   const [iWeekday, setIWeekday] = useState<'all' | '0' | '1' | '2' | '3' | '4' | '5' | '6'>('all');
@@ -409,7 +411,19 @@ export default function AdminPage() {
         }
         ctx.fillText(t, S / 2, S - barH / 2);
       }
-      setCollageUrl(canvas.toDataURL('image/jpeg', 0.88));
+      // וואטסאפ מפסיק למשוך תמונת תצוגה מקדימה מעל ~600KB.
+      // לכן: שומרים באיכות גבוהה, ורק אם יצא כבד מדי יורדים בהדרגה — עד שנכנס מתחת לסף.
+      const MAX_BYTES = 560 * 1024;            // מרווח ביטחון מתחת ל-600KB
+      const bytesOf = (u: string) => Math.ceil(u.split(',')[1].length * 3 / 4);
+      let url = canvas.toDataURL('image/jpeg', 0.92);
+      let q = 0.92;
+      while (bytesOf(url) > MAX_BYTES && q > 0.5) {
+        q -= 0.06;
+        url = canvas.toDataURL('image/jpeg', q);
+      }
+      setCollageSize(Math.round(bytesOf(url) / 1024));
+      setCollageQ(Math.round(q * 100));
+      setCollageUrl(url);
     } catch (e) { setErr(String(e)); }
     finally { setCollageBusy(''); }
   }
@@ -1177,6 +1191,13 @@ export default function AdminPage() {
                   <a className="admin-btn ghost sm" href={collageUrl} download={`${date}-${message}.jpg`} style={{ textDecoration: 'none' }}>⬇️ הורד</a>
                   <button className="admin-btn ghost sm" type="button" onClick={() => setCollageUrl('')}>בטל</button>
                 </div>
+                {!!collageSize && (
+                  <p style={{ fontSize: 12, marginTop: 6, fontWeight: 700,
+                    color: collageSize <= 580 ? '#166534' : '#991b1b' }}>
+                    {collageSize <= 580 ? '✅' : '⚠️'} {collageSize}KB · איכות {collageQ}%
+                    {collageSize > 580 && ' — מעל הסף של וואטסאפ, התצוגה המקדימה עלולה לא להופיע'}
+                  </p>
+                )}
               </div>
             )}
           </div>
