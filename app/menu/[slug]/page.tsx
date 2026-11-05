@@ -33,8 +33,20 @@ export function generateMetadata({ params }: { params: { slug: string } }): Meta
     if (/^https?:\/\//i.test(s)) return s;
     return `${SITE}${s.startsWith('/') ? '' : '/'}${s}`;
   };
-  // תמונת תצוגה לוואטסאפ: התמונה שנבחרה לתפריט, אחרת תמונת המתכון הראשון
-  const ogImage = abs(menu.image) || abs(menu.recipes[0]?.image);
+  // תמונת תצוגה לוואטסאפ: התמונה שנבחרה לתפריט, אחרת תמונת המתכון הראשון.
+  //
+  // חשוב: וואטסאפ מפסיק למשוך תמונת תצוגה מקדימה שמשקלה גדול מדי (~600KB).
+  // קולאז' 1080x1080 עובר את הסף בקלות, ואז פשוט לא מוצגת תמונה בכלל.
+  // לכן מגישים את התמונה דרך מיטוב התמונות של Vercel — אותן מידות, משקל קטן בהרבה.
+  const raw = menu.image || menu.recipes[0]?.image || '';
+  const optimized = (u: string) => {
+    const s = (u || '').trim();
+    if (!s) return '';
+    // רק תמונות שלנו (נתיב יחסי) עוברות במיטוב; כתובות חיצוניות נשארות כמו שהן
+    if (/^https?:\/\//i.test(s)) return abs(s);
+    return `${SITE}/_next/image?url=${encodeURIComponent(s)}&w=1080&q=72`;
+  };
+  const ogImage = optimized(raw);
   const images = ogImage ? [{ url: ogImage, width: 1080, height: 1080 }] : [];
   return {
     metadataBase: new URL(SITE),
